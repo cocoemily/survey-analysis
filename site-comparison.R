@@ -4,18 +4,29 @@ library(MASS)
 library(rstatix)
 library(ggpubr)
 library(ggthemes)
+library(gapminder)
+library(ggridges)
+library(cowplot)
+library(lmtest)
+library(vcd)
+library(ggstatsplot)
+
+source("site-comparison-functions.R")
 
 theme_set(theme_bw())
 
-artifacts = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
+artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
+artifacts2 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/cleaned_july_artifacts.csv")
 
-#will need to add artifacts from July
+artifacts = rbind(artifacts1, artifacts2)
 
 artifacts = artifacts %>% mutate(location = ifelse(Site_name %in% c("Square 1", "Square 2", "Square 3"), "P1", 
                                                    ifelse(Site_name %in% c("Square 4", "Square 5"), "P2", "P5")))
 artifacts$recycled = !is.na(artifacts$Recycling_description)
 artifacts$double_patina = str_detect(artifacts$Recycling_indications, "double_patina")
 artifacts$Raw_material_description = tolower(artifacts$Raw_material_description)
+
+artifacts = artifacts %>% filter(is.na(Problem_notes))
 
 
 p1 = artifacts %>% filter(location == "P1")
@@ -35,9 +46,9 @@ rl.table2 = apply(rl.table, c(1,2), sum)
 
 M3 = loglm( ~ recycled * location, dat=rl.table2, fit=TRUE)
 M4 = update(M3, ~ . - location:recycled)
-anova(M3, M4)
+#anova(M3, M4)
 chisq.test(rl.table2)
-#results indicate that there is a significant relationship between location and recycling
+#results indicate that there is a significant interaction between location and recycling
 #this means that there is a difference in the recycled object amounts between locations
 
 
@@ -54,9 +65,9 @@ atl.table2 = apply(atl.table, c(1,2), sum)
 
 M5 = loglm( ~ Artifact_type * location, dat=atl.table2, fit=TRUE)
 M6 = update(M5, ~ . - location:Artifact_type)
-anova(M5, M6)
+#anova(M5, M6)
 chisq.test(atl.table2)
-#results indicate that there is a significant relationship between location and artifact type
+#results indicate that there is a significant interaction between location and artifact type
 #this means that there is a difference in the types of artifact amounts between locations
 
   
@@ -93,8 +104,8 @@ anova(M, M2)
 anova(M, M3)
 anova(M, M4)
 anova(M, M5)
-#confused by the output -- the two way interactions seem to all contribute signficantly
-#to the model, by the three way interaction term does not?
+#all the two way interactions seem to all contribute signficantly
+#to the model, as does the three way interaction term -- interpretation?
 
 
 #Raw materials by location
@@ -112,8 +123,10 @@ M7 = loglm( ~ Raw_material_description * location, dat=rml.table2, fit=TRUE)
 M8 = update(M7, ~ . - location:Raw_material_description)
 anova(M7, M8)
 chisq.test(rml.table2)
-#results indicate that there is a significant relationship between location and raw material type
+fisher.test(rml.table2, simulate.p.value = T)
+#results indicate that there is a significant interaction between location and raw material type
 #this means that there is a difference in the types of raw material amounts between locations
+#this is consistent with visual findings, because P5 had many more different types of raw materials than P1 or P2
 
 ##chi squared tests -- Raw material description and recycling
 test = table(artifacts %>% dplyr::select(location, Raw_material_description, recycled))
@@ -128,10 +141,15 @@ M4 = update(M, ~ . - Raw_material_description:location:recycled - recycled:locat
 M5 = update(M, ~ . - Raw_material_description:location:recycled - recycled:Raw_material_description)
 
 anova(M, M2)
+#three way interaction term does not contribute significantly to the model
 anova(M, M3)
+#raw material:location contributes significantly
 anova(M, M4)
+#recycled:location contributes signficantly
 anova(M, M5)
 #Raw_material:recycling interaction does not contribute significantly to the model
+
+#within each site, raw material does not dictate whether or not something will be recycled
 
 
 #Weathering class by location
@@ -146,8 +164,8 @@ dimnames(wcl.table)
 wcl.table2 = apply(wcl.table, c(1,2), sum)
 
 M9 = loglm( ~ Weathering_class * location, dat=wcl.table2, fit=TRUE)
-M10 = update(M7, ~ . - location:Weathering_class)
-anova(M9, M10)
+M10 = update(M9, ~ . - location:Weathering_class)
+#anova(M9, M10)
 chisq.test(wcl.table2)
 #results indicate that there is a significant relationship between location and weathering class
 #this means that there is a difference in the weathering class amounts between locations
@@ -160,56 +178,36 @@ test2 = apply(test, c(1,2,3), sum)
 
 M = loglm( ~ Weathering_class * recycled * location, dat=test2, fit=TRUE)
 M2 = update(M, ~ . - Weathering_class:location:recycled)
-M3 = update(M, ~ . - Weathering_class:location:recycled - Weathering_class:location )
-M4 = update(M, ~ . - Weathering_class:location:recycled - recycled:location)
-M5 = update(M, ~ . - Weathering_class:location:recycled - recycled:Weathering_class)
+M3 = update(M, ~ . - Weathering_class:location )
+M4 = update(M, ~ . - recycled:location)
+M5 = update(M, ~ . - recycled:Weathering_class)
 
 anova(M, M2)
 #three way interaction contributes significantly to the model
-
+anova(M, M3)
+anova(M, M4)
+anova(M, M5)
+#so do all of the two way interactions
+#this indicates that weathering class different affects which artifacts are recycled at different locations
 
 #Size of recycled objects by location
-ks_test_by_location = function(data, positions = c(175, 175, 175, 5000)) {
-  data = data %>%
-    mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
-           Length = ifelse(is.na(Flake_length), Maximum_core_length, Flake_length),
-           Width = ifelse(is.na(Flake_width), Maximum_core_width, Flake_width)) %>%
-    filter(Length <= 175 & Width <= 175 & Thickness <= 175) #size of calipers
-  
-  pd = data %>% gather(key = "measurement", value = "value", Weight, Length, Width, Thickness)
-  pd$measurement = factor(pd$measurement, levels = c("Length", "Width", "Thickness", "Weight"))
-  
-  stat.test1 = pd %>% group_by(measurement) %>% t_test(value ~ recycled, ref.group = "FALSE") %>%
-    add_xy_position(x = "recycled")
-  stat.test1$ks_p = signif(ks.test((data %>% filter(recycled == T))$Weight, (data %>% filter(recycled != T))$Weight)$p)
-  stat.test1[2,]$ks_p = signif(ks.test((data %>% filter(recycled == T))$Width, (data %>% filter(recycled != T))$Width)$p)
-  stat.test1[3,]$ks_p = signif(ks.test((data %>% filter(recycled == T))$Thickness, (data %>% filter(recycled != T))$Thickness)$p)
-  stat.test1[1,]$ks_p = signif(ks.test((data %>% filter(recycled == T))$Length, (data %>% filter(recycled != T))$Length)$p)
-  
-  stat.test1 = stat.test1 %>% add_significance(
-    p.col = "ks_p",
-    output.col = "ks_p_sigf",
-    cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
-    symbols = c("****", "***", "**", "*", "ns")
-  )
-  
-  
-  plot = ggplot(pd, aes(x = as.factor(recycled), y = value, color = as.factor(recycled))) +
-    geom_boxplot() +
-    facet_wrap(. ~ measurement, scales = "free_y") +
-    labs(x = "Recycled?", y = "Value", color = "Recycled?") +
-    theme(legend.title = element_blank()) +
-    stat_pvalue_manual(stat.test1, label = "ks_p_sigf", tip.length = 0.01,
-                       label.size = 3, y.position = positions) +
-    theme_tufte() +
-    scale_color_colorblind()
-  return(plot)
-}
+plot(ks_test_recycled_vs_not(p1, positions = c(160, 175, 90, 2500)))
+plot(ks_test_recycled_vs_not(p2, positions = c(150, 155, 80, 1050)))
+plot(ks_test_recycled_vs_not(p5, positions = c(180, 160, 100, 1300)))
 
-plot(ks_test_by_location(p1, positions = c(160, 175, 90, 2500)))
-plot(ks_test_by_location(p2, positions = c(150, 155, 80, 1050)))
-plot(ks_test_by_location(p5, positions = c(180, 160, 100, 1300)))
+plot(ks_test_recycled_vs_not(artifacts))
 
 
-#Size of recycled objects compared between locations?
+dist_comp_recycled_vs_all(artifacts)
+
+
+#Size of recycled objects compared between locations
+dist_comp_recycled_vs_all(p1)
+dist_comp_recycled_vs_all(p2)
+dist_comp_recycled_vs_all(p5)
+
+cowplot::plot_grid(dist_comp_recycled_vs_all(p1),
+                   dist_comp_recycled_vs_all(p2),
+                   dist_comp_recycled_vs_all(p5),
+                   ncol = 1)
 

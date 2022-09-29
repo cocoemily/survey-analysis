@@ -3,7 +3,46 @@
 
 library(tidyverse)
 
-artifacts = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
+artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
+artifacts2 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/cleaned_july_artifacts.csv")
+
+paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 <- read_delim("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/paleocore-sss_artifact-form_-_all_versions_-_False_-_2022-08-01-05-36-18.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+s10 = paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 %>% filter(Site_name == "Semizbugu 10A")
+s4 = paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 %>% filter(Site_name == "Semizbugu 4")
+
+artifacts = rbind(artifacts1, artifacts2)
+collections = rbind(s10, s4)
+
+artifacts = artifacts %>% mutate(location = ifelse(Site_name %in% c("Square 1", "Square 2", "Square 3"), "Semizbugu P1", 
+                                                   ifelse(Site_name %in% c("Square 4", "Square 5"), "Semizbugu P2", "Semizbugu P5")))
+artifacts$recycled = !is.na(artifacts$Recycling_description)
+artifacts$double_patina = str_detect(artifacts$Recycling_indications, "double_patina")
+artifacts$Raw_material_description = tolower(artifacts$Raw_material_description)
+
+artifacts = artifacts %>% filter(is.na(Problem_notes))
+
+collections$location = collections$Site_name
+collections$recycled = !is.na(collections$Recycling_description)
+collections$double_patina = str_detect(collections$Recycling_indications, "double_patina")
+collections$Raw_material_description = tolower(collections$Raw_material_description)
+
+collections = collections %>% filter(is.na(Problem_notes))
+
+p1 = artifacts %>% filter(location == "Semizbugu P1")
+p2 = artifacts %>% filter(location == "Semizbugu P2")
+p5 = artifacts %>% filter(location == "Semizbugu P5")
+s10a = collections %>% filter(location == 'Semizbugu 10A')
+s4 = collections %>% filter(location == "Semizbugu 4")
+
+
+all_artifacts = rbind(
+  p1 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description), 
+  p2 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight,Cortex_percentage, Cortex_description), 
+  p5 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description), 
+  s10a %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description), 
+  s4 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description)
+)
 cr.artifacts = artifacts %>% filter(!is.na(Cortex_percentage))
 
 raw.mat = unique(tolower(cr.artifacts$Raw_material_description))
@@ -74,6 +113,8 @@ calculate_cortex_ratio = function(data) {
   
 }
 
-calculate_cortex_ratio(cr.artifacts %>% filter(Site_name %in% c("Square 1", "Square 2", "Square 3")))
-calculate_cortex_ratio(cr.artifacts %>% filter(Site_name %in% c("Square 4", "Square 5")))
-calculate_cortex_ratio(cr.artifacts %>% filter(Site_name %in% c("Square 6")))
+calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu P1"))
+calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu P2"))
+calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu P5"))
+#calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu 10A"))
+#calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu 4"))

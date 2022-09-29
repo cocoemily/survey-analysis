@@ -37,4 +37,14 @@ table(artifacts$recycled)
 table(artifacts$Weathering_class)
 
 
+##Density
+dens = artifacts %>% dplyr::group_by(Site_name) %>%
+  summarize(total = n(), 
+            density =
+              n()/ifelse(Site_name %in% c("Square 1", "Square 4", "Square 5", "Square 6"), 
+                                       (20*20), (10*20)))
+            
+
+
+
 
