@@ -1,5 +1,4 @@
 #DATA CLEANING
-
 library(tidyverse)
 library(sp)
 library(rgdal)
@@ -54,14 +53,14 @@ write_csv(s10a, file = "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Surve
 write_csv(s4, file = "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-dataframes/4-artifacts.csv")
 
 #### WRITE SHAPEFILES ####
-# p1_shp = SpatialPointsDataFrame(p1[,93:94], p1, proj4string = CRS("+proj=longlat +datum=WGS84"))
-# writeOGR(p1_shp, "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-shapefiles",
-#          "p1-artifacts", driver="ESRI Shapefile")
-# 
-# p2_shp = SpatialPointsDataFrame(p2[,93:94], p2, proj4string = CRS("+proj=longlat +datum=WGS84"))
-# writeOGR(p2_shp, "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-shapefiles",
-#          "p2-artifacts", driver="ESRI Shapefile")
-# 
-# p5_shp = SpatialPointsDataFrame(p5[,93:94], p5, proj4string = CRS("+proj=longlat +datum=WGS84"))
-# writeOGR(p5_shp, "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-shapefiles",
-#          "p5-artifacts", driver="ESRI Shapefile")
+p1_shp = SpatialPointsDataFrame(p1[,93:94], p1, proj4string = CRS("+proj=longlat +datum=WGS84"))
+writeOGR(p1_shp, "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-shapefiles",
+         "p1-artifacts", driver="ESRI Shapefile")
+
+p2_shp = SpatialPointsDataFrame(p2[,93:94], p2, proj4string = CRS("+proj=longlat +datum=WGS84"))
+writeOGR(p2_shp, "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-shapefiles",
+         "p2-artifacts", driver="ESRI Shapefile")
+
+p5_shp = SpatialPointsDataFrame(p5[,93:94], p5, proj4string = CRS("+proj=longlat +datum=WGS84"))
+writeOGR(p5_shp, "/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-shapefiles",
+         "p5-artifacts", driver="ESRI Shapefile")
