@@ -50,7 +50,7 @@ marks(rcycl.ppp) = NULL
 Window(rcycl.ppp) = win
 plot(rcycl.ppp)
 
-K2 = density(rcycl.ppp)
+K2 = density(rcycl.ppp, sigma = bw.diggle, adjust = 2)
 plot(K2, useRaster = F, main = "Recycled artifact density")
 contour(K2, add = TRUE)
 
@@ -59,19 +59,38 @@ plot(Gest(rcycl.ppp))
 
 plot(Fest(rcycl.ppp))
 plot(Jest(rcycl.ppp))
-
-Kest = Kest(rcycl.ppp)
-plot(Kest)
 #all measures confirm CSR --> homogenous process
 
 #### recycling point process and artifact density ####
-cdf.test(rcycl.ppp, art.dens, test = "ks")
+cdf.test(rcycl.ppp, artifact.dens, test = "ks")
 #p value less than 0.05, so reject the null -> recycled points do depend on underlying density of artifacts
+berman.test(rcycl.ppp, artifact.dens)
+#recycled points depend on underlying density of artifacts
 
 
+coproc = roc(rcycl.ppp, artifact.dens)
+plot(coproc)
+#artifact density has very strong discriminatory power, strong effect of artifact density on recycled object point process
 
 
+#find hotspots
+LR = scanLRTS(rcycl.ppp, r = 2 * bw.diggle(rcycl.ppp))
+plot(LR, useRaster = F)
+pvals = eval.im(pchisq(LR, df = 1, lower.tail = F))
+plot(pvals, useRaster = F)
+plot(rcycl.ppp, add = T, col = "white")
 
+##nearest neighbor cleaning -- separates noise from features 
+Z = nnclean(rcycl.ppp, k=10, plothist = T)
+plot(Z)
+
+
+Kest = Kest(rcycl.ppp, correction = "best")
+plot(Kest)
+
+Lest = Lest(rcycl.ppp, correction = "best")
+plot(Lest)
+#both K function and L function indicate a regular point process for recycled objects
 
 
 rho = rhohat(rcycl.ppp, art.dens)
@@ -82,30 +101,9 @@ plot(rho, las=1, main=NULL)
 
 
 
-#### MARKED POINT PROCESSES ####
-atype.ppp = as.ppp(st_data %>% select(Artfct_t)) 
-Window(atype.ppp) = win
-
-summary(atype.ppp)
-plot(split(atype.ppp))
-
-#independ intensities
-plot(density(split(atype.ppp)), useRaster = F)
-
-#relative proportions of intensity ?? -- doesn't work right now
-# Y = density(split(atype.ppp))
-# attach(Y)
-# pCF = eval.im(complete_flake/(complete_flake + broken_flake + tool + tool_fragment +
-#                           + core + core_fragement + shatter))
-# detach(Y)
 
 
-plot(alltypes(atype.ppp, "Kdot"))
 
-##need to determine which point process is best for modeling
-## also need to figure out how to interpret the results 
-test = ppm(atype.ppp, ~marks * K1)
-summary(test)
 
 
 
