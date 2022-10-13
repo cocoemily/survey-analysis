@@ -48,6 +48,8 @@ for(i in 1:nrow(data)) {
 data$Bordian_name = factor(data$Bordian_name, levels = bordian_levels)
 data$bord.num = unclass(data$Bordian_name)
 
+
+
 #### list of numerics ####
 # 1) data$Pltfrm_w
 # 2) data$Pltfrm_th

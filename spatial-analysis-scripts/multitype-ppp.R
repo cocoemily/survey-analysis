@@ -16,7 +16,8 @@ summary(atype.ppp)
 plot(split(atype.ppp))
 
 #independent intensities
-plot(density(split(atype.ppp)), useRaster = F)
+atype.dens = density(split(atype.ppp), sigma = bw.diggle, adjust = 2)
+plot(atype.dens, useRaster = F)
 plot(Smooth(atype.ppp), useRaster = F)
 
 

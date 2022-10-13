@@ -1,3 +1,5 @@
+## need to think about relative density plots of some of these variables, since they will all be influenced by overall artifact density
+
 library(tidyverse)
 library(rgdal)
 library(raster)
@@ -7,6 +9,8 @@ library(spDataLarge)
 library(spdep)
 library(tmap)
 library(spatstat)
+
+set.seed(120109)
 
 st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
 win = as.owin(st_transform(st_as_sf(window), 32642))
@@ -23,8 +27,6 @@ compl_flk.ppp = as.ppp(st_data %>% filter(compl_flk == 1))
 marks(compl_flk.ppp) = NULL
 Window(compl_flk.ppp) = win
 compl_flk.dens = density(compl_flk.ppp, sigma = bw.diggle, adjust = 2)
-plot(compl_flk.dens, useRaster = F)
-contour(compl_flk.dens, add = T)
 
 broke_flk.ppp = as.ppp(st_data %>% filter(broke_flk == 1))
 marks(broke_flk.ppp) = NULL
@@ -50,8 +52,6 @@ core_frag.ppp = as.ppp(st_data %>% filter(core_frag == 1))
 marks(core_frag.ppp) = NULL
 Window(core_frag.ppp) = win
 core_frag.dens = density(core_frag.ppp, sigma = bw.diggle, adjust = 2)
-plot(core_frag.dens)
-plot(core_frag.ppp, add = T)
 
 shatter.ppp = as.ppp(st_data %>% filter(shatter == 1))
 marks(shatter.ppp) = NULL
@@ -98,10 +98,10 @@ marks(type_bladelet.ppp) = NULL
 Window(type_bladelet.ppp) = win
 type_bladelet.dens = density(type_bladelet.ppp, sigma = bw.diggle, adjust = 2)
 
-type_oth.ppp = as.ppp(st_data %>% filter(type_oth == 1))
-marks(type_oth.ppp) = NULL
-Window(type_oth.ppp) = win
-type_oth.dens = density(type_oth.ppp, sigma = bw.diggle, adjust = 2)
+# type_oth.ppp = as.ppp(st_data %>% filter(type_oth == 1))
+# marks(type_oth.ppp) = NULL
+# Window(type_oth.ppp) = win
+# type_oth.dens = density(type_oth.ppp, sigma = bw.diggle, adjust = 2)
 
 rside_dorsal.ppp = as.ppp(st_data %>% filter(rside_dorsal == 1))
 marks(rside_dorsal.ppp) = NULL
@@ -143,10 +143,10 @@ marks(ttype_point.ppp) = NULL
 Window(ttype_point.ppp) = win
 ttype_point.dens = density(ttype_point.ppp, sigma = bw.diggle, adjust = 2)
 
-ttype_biface.ppp = as.ppp(st_data %>% filter(ttype_biface == 1))
-marks(ttype_biface.ppp) = NULL
-Window(ttype_biface.ppp) = win
-ttype_biface.dens = density(ttype_biface.ppp, sigma = bw.diggle, adjust = 2)
+# ttype_biface.ppp = as.ppp(st_data %>% filter(ttype_biface == 1))
+# marks(ttype_biface.ppp) = NULL
+# Window(ttype_biface.ppp) = win
+# ttype_biface.dens = density(ttype_biface.ppp, sigma = bw.diggle, adjust = 2)
 
 ttype_mult.ppp = as.ppp(st_data %>% filter(ttype_mult == 1))
 marks(ttype_mult.ppp) = NULL
@@ -157,3 +157,40 @@ ttype_oth.ppp = as.ppp(st_data %>% filter(ttype_oth == 1))
 marks(ttype_oth.ppp) = NULL
 Window(ttype_oth.ppp) = win
 ttype_oth.dens = density(ttype_oth.ppp, sigma = bw.diggle, adjust = 2)
+
+retouch.ppp = as.ppp(st_data %>% filter(data$Retch == T))
+marks(retouch.ppp) = NULL
+Window(retouch.ppp) = win
+retouch.dens = density(retouch.ppp, sigma = bw.diggle, adjust = 2)
+
+edge_dam.ppp = as.ppp(st_data %>% filter(data$Edg_d == T))
+marks(edge_dam.ppp) = NULL
+Window(edge_dam.ppp) = win
+edge_dam.dens = density(edge_dam.ppp, sigma = bw.diggle, adjust = 2)
+
+##Numeric values get window add after creating density
+ppp = as.ppp(st_data)
+marks(ppp) = NULL
+
+cortex.dens = density(ppp, sigma = bw.diggle, adjust = 2, 
+                      weights = data$Crtx_p)
+Window(cortex.dens) = win
+
+##should probably remove outliers
+weight.dens = density(ppp, sigma = bw.diggle, adjust = 2, 
+                      weights = data$Weght)
+Window(weight.dens) = win
+
+length.dens = density(ppp, sigma = bw.diggle, adjust = 2, 
+                      weights = data$Lngth)
+Window(length.dens) = win
+
+width.dens = density(ppp, sigma = bw.diggle, adjust = 2, 
+                      weights = data$Width)
+Window(width.dens) = win
+
+thick.dens = density(ppp, sigma = bw.diggle, adjust = 2, 
+                      weights = data$Thckn)
+Window(thick.dens) = win
+
+
