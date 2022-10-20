@@ -11,11 +11,14 @@ library(lmtest)
 library(vcd)
 library(ggstatsplot)
 library(rcompanion)
+library(DataScienceR)
 
 source("site-comparison-functions.R")
 
 theme_set(theme_bw())
 
+
+#### DATA LOADING ####
 artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
 artifacts2 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/cleaned_july_artifacts.csv")
 
@@ -65,6 +68,8 @@ all_artifacts = rbind(
   s4 %>% select_at(cols)
   )
 
+
+#### DATA CLEANING ####
 all_artifacts$Weathering_class = factor(all_artifacts$Weathering_class, 
                                         levels = c("strongly_weathered", "mildly_weathered", "weakly_weathered", "not_weathered", "other"))
 all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type, 
@@ -73,6 +78,7 @@ all_artifacts$Flake_termination = factor(all_artifacts$Flake_termination,
                                          levels = c("feather", "hinge", "plunge", "step", "other"))
 all_artifacts$Flake_fragment = factor(all_artifacts$Flake_fragment , 
                                          levels = c("proximal", "medial", "distal", "other"))
+all_artifacts$Retouch_side = factor(all_artifacts$Retouch_side, levels = c("dorsal", "ventral", "bifacial"))
 
 all_artifacts = all_artifacts %>%
   mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
@@ -80,11 +86,39 @@ all_artifacts = all_artifacts %>%
          Width = ifelse(is.na(Flake_width), Maximum_core_width, Flake_width)) %>%
   filter(Length <= 200 & Width <= 200 & Thickness <= 200) #size of calipers
 
+
+source("bordian_types_dictionary.R")
+all_artifacts$Bordian_name = ""
+for(i in 1:nrow(all_artifacts)) {
+  if(!is.na(all_artifacts$Bordian_type[i])) {
+    all_artifacts$Bordian_name[i] = bordian_types[all_artifacts$Bordian_type[i]]
+  }
+}
+all_artifacts$Bordian_name = factor(all_artifacts$Bordian_name, levels = bordian_levels)
+
 all_artifacts = all_artifacts %>%
-  mutate(Retouch_side = ifelse(str_detect(all_artifacts$Retouch_side, pattern = " "), "bifacial", Retouch_side)) %>%
-  mutate()
+  mutate(
+    Tool_type = ifelse(str_detect(Tool_type, "notch denticulate"), "notch/denticulate", 
+                       ifelse(str_detect(Tool_type, " "), "multiple", 
+                              Tool_type)), 
+    Flake_type = ifelse(str_detect(Flake_type, pattern = "flake"), "flake", Flake_type)
+    )
+all_artifacts$Tool_type = factor(all_artifacts$Tool_type, levels = c("notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"))
+all_artifacts$Flake_type = factor(all_artifacts$Flake_type, levels = c("flake", "blade", "bladelet", "other"))
 
 
+#### TO DO: raw material cleaning ####
+
+#possible artifact rolling
+all_artifacts$poss_roll = ifelse(all_artifacts$Bordian_name == "alternate scraper", TRUE, FALSE)
+all_artifacts$poss_roll = ifelse(str_detect(all_artifacts$Retouch_side, pattern = " "), TRUE, all_artifacts$poss_roll)
+
+rolled.rcycl = all_artifacts %>% filter(poss_roll == T & recycled == T)
+all_artifacts = subset(all_artifacts, !(Id_number %in% rolled.rcycl$Id_number))
+
+
+#### cleaning up environment ####
+rm(list = c("artifacts", "artifacts1", "artifacts2", "collections", "paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18", "s10", "rolled.rcycl"))
 
 
 #### Differences by location ####
@@ -95,18 +129,19 @@ ggplot(all_artifacts) +
 
 rl.table = table(all_artifacts %>% dplyr::select(location,recycled))
 chisq.test(rl.table)
-pairwiseNominalIndependence(rl.table)
+pairwiseNominalIndependence(rl.table, simulate.p.value = T, 
+                            fisher = T, chisq = F, gtest = F)
 #No difference in distribution of recycled vs non recycled objects between P2 and P5
 
 at.table = table(all_artifacts %>% dplyr::select(location, Artifact_type))
-at.table
 pairwiseNominalIndependence(at.table, simulate.p.value = T, 
                             fisher = T, chisq = F, gtest = F)
+#no difference between S10A and S4 or between P2 and P5
 
 wc.table = table(all_artifacts %>% dplyr::select(location, Weathering_class))
-wc.table
 pairwiseNominalIndependence(wc.table, simulate.p.value = T, 
                             fisher = T, chisq = F, gtest = F)
+#no difference between P2 and P5
 
 pairwiseNominalIndependence(
   table(all_artifacts %>% dplyr::select(location, Retouch)),
@@ -125,6 +160,62 @@ pairwiseNominalIndependence(
   simulate.p.value = T, 
   fisher = T, chisq = F, gtest = F
 )
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Bordian_name)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Tool_type)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Flake_type)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Flake_fragment)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Flake_termination)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+
+pairwiseKS(all_artifacts %>% dplyr::select(location, Weight))
+
+pairwiseKS(all_artifacts %>% dplyr::select(location, Length))
+
+pairwiseKS(all_artifacts %>% dplyr::select(location, Width))
+
+pairwiseKS(all_artifacts %>% dplyr::select(location, Thickness))
+
+pairwiseKS(all_artifacts %>% dplyr::select(location, Cortex_percentage))
+
+pairwiseKS(all_artifacts %>% dplyr::select(location, Platform_thickness))
+pairwiseKS(all_artifacts %>% dplyr::select(location, Platform_width))
+
+pairwiseKS(all_artifacts %>% dplyr::select(location, Dorsal_flake_scar_count))
+
+
+
+
+
+
+
+
+
+
 
 #### old code ####
 rl.table = table(artifacts %>% dplyr::select(location,recycled))

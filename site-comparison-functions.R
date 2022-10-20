@@ -1,5 +1,41 @@
 #Site comparison functions
 
+pairwiseKS = function(data) {
+  locations = unique(data$location)
+  
+  results = data.frame(location1 = character(0), 
+                       location2 = character(0), 
+                       p.value = numeric(0))
+  
+  for(l in locations) {
+    for(l2 in locations) {
+      test = ks.test(
+        x = as.vector((data %>% filter(location == l))[2])[[1]], 
+        y = as.vector((data %>% filter(location == l2))[2])[[1]], 
+        alternative = "two.sided",
+        simulate.p.value = T
+      )
+      
+      results[nrow(results) + 1, ] = c(l, l2, test$p.value)
+    }
+    
+  }
+  
+  results2 = results %>% filter(location1 != location2) %>% 
+    rowwise() %>%
+    mutate(key = paste(sort(c(location1, location2)), collapse="")) %>%
+    distinct(key, .keep_all=T) %>%
+    select(-key) %>% 
+    mutate(Comparison = paste0(location1, " : ", location2)) %>%
+    select(Comparison, p.value)
+  
+  print(results2)
+  
+}
+
+
+
+#### OLD FUNCTIONS ####
 ks_test_recycled_vs_not = function(data, positions = c(175, 175, 175, 5000)) {
   data = data %>%
     mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
