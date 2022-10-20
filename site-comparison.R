@@ -10,6 +10,7 @@ library(cowplot)
 library(lmtest)
 library(vcd)
 library(ggstatsplot)
+library(rcompanion)
 
 source("site-comparison-functions.R")
 
@@ -18,27 +19,114 @@ theme_set(theme_bw())
 artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
 artifacts2 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/cleaned_july_artifacts.csv")
 
-artifacts = rbind(artifacts1, artifacts2)
+paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 <- read_delim("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/paleocore-sss_artifact-form_-_all_versions_-_False_-_2022-08-01-05-36-18.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
-artifacts = artifacts %>% mutate(location = ifelse(Site_name %in% c("Square 1", "Square 2", "Square 3"), "P1", 
-                                                   ifelse(Site_name %in% c("Square 4", "Square 5"), "P2", "P5")))
+s10 = paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 %>% filter(Site_name == "Semizbugu 10A")
+s4 = paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 %>% filter(Site_name == "Semizbugu 4")
+
+artifacts = rbind(artifacts1, artifacts2)
+collections = rbind(s10, s4)
+
+artifacts = artifacts %>% mutate(location = ifelse(Site_name %in% c("Square 1", "Square 2", "Square 3"), "Semizbugu P1", 
+                                                   ifelse(Site_name %in% c("Square 4", "Square 5"), "Semizbugu P2", "Semizbugu P5")))
 artifacts$recycled = !is.na(artifacts$Recycling_description)
 artifacts$double_patina = str_detect(artifacts$Recycling_indications, "double_patina")
 artifacts$Raw_material_description = tolower(artifacts$Raw_material_description)
 
 artifacts = artifacts %>% filter(is.na(Problem_notes))
 
+collections$location = collections$Site_name
+collections$recycled = !is.na(collections$Recycling_description)
+collections$double_patina = str_detect(collections$Recycling_indications, "double_patina")
+collections$Raw_material_description = tolower(collections$Raw_material_description)
 
-p1 = artifacts %>% filter(location == "P1")
-p2 = artifacts %>% filter(location == "P2")
-p5 = artifacts %>% filter(location == "P5")
+collections = collections %>% filter(is.na(Problem_notes))
 
-#Recycling by location
-ggplot(artifacts) +
+p1 = artifacts %>% filter(location == "Semizbugu P1")
+p2 = artifacts %>% filter(location == "Semizbugu P2")
+p5 = artifacts %>% filter(location == "Semizbugu P5")
+s10a = collections %>% filter(location == 'Semizbugu 10A')
+s4 = collections %>% filter(location == "Semizbugu 4")
+
+cols = c("Id_number", "location", "recycled", "double_patina", "Raw_material_description", 
+         "Weathering_class", "Artifact_type", "Bordian_type", "Tool_type", "Flake_type", 
+         "Dorsal_flake_scar_count", "Cortex_percentage", "Flake_fragment", "Flake_termination",
+         "Retouch", "Retouch_side", "Edge_damage",
+         "Platform_thickness", "Platform_width",
+         "Flake_thickness", "Flake_length", "Flake_width", 
+         "Maximum_core_length", "Maximum_core_width", "Maximum_core_thickness", 
+         "Weight")
+
+all_artifacts = rbind(
+  p1 %>% select_at(cols), 
+  p2 %>% select_at(cols), 
+  p5 %>% select_at(cols), 
+  s10a %>% select_at(cols), 
+  s4 %>% select_at(cols)
+  )
+
+all_artifacts$Weathering_class = factor(all_artifacts$Weathering_class, 
+                                        levels = c("strongly_weathered", "mildly_weathered", "weakly_weathered", "not_weathered", "other"))
+all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type, 
+                                     levels = c("complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment", "shatter"))
+all_artifacts$Flake_termination = factor(all_artifacts$Flake_termination, 
+                                         levels = c("feather", "hinge", "plunge", "step", "other"))
+all_artifacts$Flake_fragment = factor(all_artifacts$Flake_fragment , 
+                                         levels = c("proximal", "medial", "distal", "other"))
+
+all_artifacts = all_artifacts %>%
+  mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
+         Length = ifelse(is.na(Flake_length), Maximum_core_length, Flake_length),
+         Width = ifelse(is.na(Flake_width), Maximum_core_width, Flake_width)) %>%
+  filter(Length <= 200 & Width <= 200 & Thickness <= 200) #size of calipers
+
+all_artifacts = all_artifacts %>%
+  mutate(Retouch_side = ifelse(str_detect(all_artifacts$Retouch_side, pattern = " "), "bifacial", Retouch_side)) %>%
+  mutate()
+
+
+
+
+#### Differences by location ####
+ggplot(all_artifacts) +
   geom_bar(aes(recycled)) +
   facet_wrap(~location) +
   coord_flip()
 
+rl.table = table(all_artifacts %>% dplyr::select(location,recycled))
+chisq.test(rl.table)
+pairwiseNominalIndependence(rl.table)
+#No difference in distribution of recycled vs non recycled objects between P2 and P5
+
+at.table = table(all_artifacts %>% dplyr::select(location, Artifact_type))
+at.table
+pairwiseNominalIndependence(at.table, simulate.p.value = T, 
+                            fisher = T, chisq = F, gtest = F)
+
+wc.table = table(all_artifacts %>% dplyr::select(location, Weathering_class))
+wc.table
+pairwiseNominalIndependence(wc.table, simulate.p.value = T, 
+                            fisher = T, chisq = F, gtest = F)
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Retouch)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Edge_damage)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+pairwiseNominalIndependence(
+  table(all_artifacts %>% dplyr::select(location, Retouch_side)),
+  simulate.p.value = T, 
+  fisher = T, chisq = F, gtest = F
+)
+
+#### old code ####
 rl.table = table(artifacts %>% dplyr::select(location,recycled))
 dim(rl.table)
 dimnames(rl.table)

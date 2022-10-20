@@ -103,3 +103,9 @@ data$ttype_point = ifelse(data$tool.type == "point", 1, 0)
 data$ttype_biface = ifelse(data$tool.type == "biface", 1, 0)
 data$ttype_mult = ifelse(data$tool.type == "multiple", 1, 0)
 data$ttype_oth = ifelse(data$tool.type == "other", 1, 0)
+
+
+#possible artifact rolling?
+data$poss_roll = ifelse(data$Bordian_name == "alternate scraper", TRUE, FALSE)
+data$poss_roll = ifelse(str_detect(data$Rtch_s, pattern = " "), TRUE, data$poss_roll)
+

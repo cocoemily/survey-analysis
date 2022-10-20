@@ -68,6 +68,13 @@ all_artifacts$Weathering_class = factor(all_artifacts$Weathering_class,
 all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type, 
                                      levels = c("complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment", "shatter"))
 
+all_artifacts = all_artifacts %>%
+  mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
+         Length = ifelse(is.na(Flake_length), Maximum_core_length, Flake_length),
+         Width = ifelse(is.na(Flake_width), Maximum_core_width, Flake_width)) %>%
+  filter(Length <= 200 & Width <= 200 & Thickness <= 200) #size of calipers
+
+
 #LOCATION
 ggplot(all_artifacts) +
   geom_bar(aes(recycled)) +
