@@ -274,17 +274,14 @@ thick.dens = density(ppp, sigma = bw.diggle, adjust = 2,
 
 
 #### elevation covariate ####
-dem1 = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/dem-1arcsec/n47_e077_1arc_v3.tif")
-dem2 = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/dem-1arcsec/n47_e078_1arc_v3.tif")
-
-dem = merge(dem1, dem2)
+dem = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/terrain/WorldDEMNeo_DSM_015_N47_09_E077_75/DEM/WorldDEMNeo_DSM_015_N47_09_E077_75_DEM.tif")
 dem_rpj = projectRaster(dem, crs = 32642)
 plot(dem_rpj)
 
 ##not high resolution enough
 dem_crop = crop(dem_rpj, st_transform(st_as_sf(window), 32642))
 plot(dem_crop)
-dem_crop
 
+dem_im = as.im(dem_crop)
+plot(dem_im, useRaster=F)
 Window(dem_im) = win
-plot(dem_im)
