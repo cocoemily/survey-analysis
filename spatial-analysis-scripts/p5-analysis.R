@@ -19,134 +19,206 @@ data = p5.artifacts
 window = p5.window
 
 source("spatial-analysis-scripts/clean-data.R")
-source("spatial-analysis-scripts/get-covariates.R")
+#source("spatial-analysis-scripts/get-covariates.R")
 
 st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
 win = as.owin(st_transform(st_as_sf(window), 32642))
 
+####ALL POINTS####
+quadrat.test(ppp, 5, method = "MonteCarlo") 
+#results of quadrat test indicate a inhomogeneous process
+plot(envelope(ppp, fun = Gest, nsim = 99))
+plot(envelope(ppp, fun = Fest, nsim = 99))
+#confirms inhomogeneous process
+
+plot(ppp)
+
+D = density(ppp, sigma=bw.diggle)
+plot(D)
+
+sqrt(nrow(st_data))
+Dnn = nndensity(ppp, k = 25)
+plot(Dnn)
+
+mad.test(ppp, Linhom, nsims = 99, use.theo = T)
+dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
+#both tests show spatial dependence of points
+
+Kin = Kinhom(ppp, lambda = Dnn, correction = "Ripley")
+plot(Kin)
+#Lin = Linhom(ppp, lambda = Dnn)
+#plot(Lin)
+#both K function falls slightly below the poisson line --> points are slightly more dispersed than expected
+## total point process needs to be assessed as a Gibbs model?
+plot(dem_im)
+
+cdf.test(ppp, dem_im)
+cdf.test(ppp, sp_im)
+cdf.test(ppp, sd_im)
+#location of points dependent on elevation and slope
+
+###### TODO####
+fit1 = ppm(ppp ~ dem_im)
+summary(fit1)
+plot(fit1, useRaster=F)
+fitted.artifact.dens = intensity(fit1)
+
+###### segregation tests #####
+#null = spatially constant
+#artifact types
+ppp = as.ppp(st_data)
+marks(ppp) = st_data$Artfct_t
+Window(ppp) = win
+plot(ppp)
+segregation.test(ppp, nsim=99)
+#there is spatial segregation of artifact types
+plot(density(split(ppp)), useRaster=F)
+
+#weathering class with other weathering
+ppp = as.ppp(st_data)
+marks(ppp) = st_data$Wthrng_c
+Window(ppp) = win
+plot(ppp)
+segregation.test(ppp, nsim=99) 
+#there is spatial segregation of weathering types
+plot(density(split(ppp)), useRaster=F)
+
+#weathering class without other weathering
+wdata = st_data %>% filter(Wthrng_c != "other" & !is.na(Wthrng_c))
+wppp = as.ppp(wdata)
+marks(wppp) = wdata$Wthrng_c
+Window(wppp) = win
+plot(wppp)
+segregation.test(wppp, nsim=99)
+plot(density(split(wppp)), useRaster=F)
+#spatial segregation of weathering types
+
+ttdata = st_data %>% filter(!is.na(tool.type))
+ttppp = as.ppp(ttdata)
+marks(ttppp) = ttdata$tool.type
+Window(ttppp) = win
+plot(ttppp)
+segregation.test(ttppp, nsim=99)
+plot(density(split(ttppp)), useRaster=F)
+
+
+#### ppp with recycled artifacts ####
 rcycl.data = st_data %>% filter(rcycl == 1)
 rcycl.data = rcycl.data %>% filter(poss_roll == F | is.na(poss_roll))
-rcycl.ppp = as.ppp(st_data %>% filter(rcycl == 1))
+rcycl.ppp = as.ppp(rcycl.data)
 marks(rcycl.ppp) = NULL
 Window(rcycl.ppp) = win
 plot(rcycl.ppp)
 
-K2 = density(rcycl.ppp, sigma = bw.diggle, adjust = 2)
-plot(K2, useRaster = F, main = "Recycled artifact density")
-contour(K2, add = TRUE)
+#test for homogeneity
+quadrat.test(rcycl.ppp, 5, method = "MonteCarlo") 
+plot(envelope(rcycl.ppp, fun = Gest, nsim = 99))
+plot(envelope(rcycl.ppp, fun = Fest, nsim = 99))
+##recycling ppp is inhomogeneous
 
-#### recycling point process and artifact density ####
-cdf.test(rcycl.ppp, artifact.dens, test = "ks")
-#p value less than 0.05, so reject the null -> recycled points do depend on underlying density of artifacts
-berman.test(rcycl.ppp, artifact.dens)
-#recycled points depend on underlying density of artifacts
+#test for complete spatial randomness
+mad.test(rcycl.ppp, Kinhom, nsims = 99, use.theo = T)
+#mad test indicates no CSR
+dclf.test(rcycl.ppp, Kinhom, nsims = 99, use.theo = T)
+#dclf test indicate no CSR
+hopskel.test(rcycl.ppp)
+#hopskel test indicates no CSR
 
-coproc = roc(rcycl.ppp, artifact.dens)
-plot(coproc)
-#artifact density has very strong discriminatory power, strong effect of artifact density on recycled object point process
+D = density(rcycl.ppp, sigma=bw.diggle)
+plot(D, useRaster=F)
 
+sqrt(nrow(rcycl.data))
+Dnn = nndensity(rcycl.ppp, k = 24)
+plot(Dnn, useRaster=F)
 
-Z = nnclean(rcycl.ppp, k=10, plothist = T)
-plot(Z)
-
-Kest = Kest(rcycl.ppp, correction = "best")
-plot(Kest)
-
-Lest = Lest(rcycl.ppp, correction = "best")
-plot(Lest)
-#both K function and L function indicate recycled objects are clustered
-
-#### modeling poisson point processes ####
-ppm0 = ppm(rcycl.ppp ~ 1)
-
-ppm1 = ppm(rcycl.ppp ~ artifact.dens)
-ppm2 = ppm(rcycl.ppp ~ log(artifact.dens))
-ppm2
-
-AIC(ppm1)
-AIC(ppm2)
-# power relationship fits better
-
-anova(ppm0, ppm2, test = "LRT")
-#artifact density significantly affects intensity of recycled artifacts
-
-lambda0 = predict(ppm2)
-rh1 = rhohat(rcycl.ppp, artifact.dens, baseline = lambda0)
-plot(rh1)
-#underestimates intensity of recycled artifacts at low artifact density areas,
-#possibly slighly overestimates intensity of recycled artifacts at high artifact density areas
-
-fit1 = ppm(rcycl.ppp ~ log(artifact.dens) +
-             compl_flk.dens + broke_flk.dens +
-             tool.dens + tool_frag.dens + 
-             core.dens + core_frag.dens + shatter.dens)
-fit1 #only tools and cores have significant effect, but with other things include effect of artifact density is not significant
-
-anova(ppm2, fit1, test = "LRT") ## adding artifact types to the model DOES add significant information
-drop1(fit1)
-##adds information but none of the artifact types have a significant effect on the intensity of 
-#recycled artifacts apart from artifact density effects
-
-fit2 = ppm(rcycl.ppp ~ log(artifact.dens) +
-      str_weather.dens + mid_weather.dens + weak_weather.dens + not_weather.dens)
-fit2
-anova(ppm2, fit2, test = "LRT") ## adding weathering to the model DOES add significant information
-#significant effects of strongly weathered and weakly weathered artifacts
-
-fit3 = ppm(rcycl.ppp ~ log(artifact.dens) +
-      rside_dorsal.dens + rside_ventral.dens + rside_bifacial.dens)
-fit3
-anova(ppm2, fit3, test = "LRT") ## adding retouch side DOES add significant information
-#significant effects of dorsal and bifacial retouch side counts
-
-fit4 = ppm(rcycl.ppp ~ log(artifact.dens) + retouch.dens)
-anova(ppm2, fit4, test = "LRT") ## adding retouch in general DOES add significant information
-fit4 #significant effect of retouched artifacts
-
-fit5 = ppm(rcycl.ppp ~ log(artifact.dens) + edge_dam.dens)
-anova(ppm2, fit5, test = "LRT") ## adding edge damage DOES add significant information 
-fit5 #significant effect
-
-fit6 = ppm(rcycl.ppp ~ log(artifact.dens) +
-             type_flake.dens + type_blade.dens + type_bladelet.dens)
-anova(ppm2, fit6, test = "LRT") # blank type DOES add significant information
-fit6 #significant effect of flake blank intensity
-
-fit7 = ppm(rcycl.ppp ~ log(artifact.dens) +
-             ttype_mult.dens + ttype_notch.dens + ttype_dent.dens +
-             ttype_nd.dens + ttype_point.dens + ttype_oth.dens)
-fit7
-anova(ppm2, fit7, test = "LRT") #adding tool type does add significant information, but none of the tool types have individual significant effects
-
-fit8 = ppm(rcycl.ppp ~ log(artifact.dens) + length.dens + width.dens + thick.dens + weight.dens)
-anova(ppm2, fit8, test = "LRT") #adding all size covariates together does not add significant information
-fit8
-fit8.1 = ppm(rcycl.ppp ~ log(artifact.dens) + length.dens)
-anova(ppm2, fit8.1, test = "LRT") #adding length individually adds significant information
-fit8.1
-fit8.2 = ppm(rcycl.ppp ~ log(artifact.dens) + width.dens)
-anova(ppm2, fit8.2, test = "LRT") #adding width individually adds significant information
-fit8.2
-fit8.3 = ppm(rcycl.ppp ~ log(artifact.dens) + thick.dens)
-anova(ppm2, fit8.3, test = "LRT") #adding thickness individually adds significant information
-fit8.3
-fit8.4 = ppm(rcycl.ppp ~ log(artifact.dens) + weight.dens)
-anova(ppm2, fit8.4, test = "LRT") #adding weight individually adds significant information
-fit8.4
-
-fit9 = ppm(rcycl.ppp ~ log(artifact.dens) + cortex.dens)
-anova(ppm2, fit9, test = "LRT") #adding cortex does not add significant information
+Ks = Kinhom(rcycl.ppp, lambda = Dnn)
+plot(Ks)
+Ks = Kinhom(rcycl.ppp, lambda = D)
+plot(Ks)
+Ls = Linhom(rcycl.ppp, lambda = Dnn)
+plot(Ls)
+Ls = Linhom(rcycl.ppp, lambda = D)
+plot(Ls)
+#both K and L fall slightly below the poisson line --> points are slightly more dispersed than expected
+##model recycled PPP as Gibbs model, maybe a Poisson though?
 
 
-full.ppm = ppm(rcycl.ppp ~ log(artifact.dens) + 
-                 compl_flk.dens + broke_flk.dens +
-                 tool.dens + tool_frag.dens + 
-                 core.dens + core_frag.dens + shatter.dens +
-                 str_weather.dens + mid_weather.dens + weak_weather.dens + not_weather.dens +
-                 retouch.dens +
-                 rside_dorsal.dens + rside_ventral.dens + rside_bifacial.dens +
-                 edge_dam.dens +
-                 type_flake.dens + type_blade.dens + type_bladelet.dens +
-                 ttype_mult.dens + ttype_notch.dens + ttype_dent.dens +
-                 ttype_nd.dens + ttype_point.dens + ttype_oth.dens )
-full.ppm
+##### Dependence of recycling points intensity on elevation and slope #####
+##cdf null hypothesis - CDF of the covariate at all points is equal 
+## to the CDF of covariate evaluated at the location of the point pattern
+
+cdf.test(rcycl.ppp, dem_im)
+cdf.test(rcycl.ppp, sp_im)
+cdf.test(rcycl.ppp, sd_im)
+
+auc(rcycl.ppp, dem_im)
+auc(rcycl.ppp, sd_im)
+auc(rcycl.ppp, sp_im)
+
+##### Dependence of recycling points intensity on underlying artifact density ####
+sqrt(nrow(st_data))
+Dnn = nndensity(ppp, k = 40)
+plot(Dnn)
+
+cdf.test(rcycl.ppp, as.im(Dnn))
+berman.test(rcycl.ppp, as.im(Dnn))
+berman.test(rcycl.ppp, as.im(Dnn), "Z2")
+
+auc(rcycl.ppp, as.im(Dnn))
+
+
+##### Dependence of recycling points intensity on underlying density of retouched artifacts ####
+cdf.test(rcycl.ppp, as.im(retouch.dens))
+berman.test(rcycl.ppp, as.im(retouch.dens))
+berman.test(rcycl.ppp, as.im(retouch.dens), "Z2")
+
+auc(rcycl.ppp, as.im(retouch.dens))
+
+##### Volumetric and weight dependence #####
+cdf.test(rcycl.ppp, as.im(weight.dens))
+auc(rcycl.ppp, as.im(weight.dens))
+
+cdf.test(rcycl.ppp, as.im(thick.dens))
+auc(rcycl.ppp, as.im(thick.dens))
+
+cdf.test(rcycl.ppp, as.im(length.dens))
+auc(rcycl.ppp, as.im(length.dens))
+
+cdf.test(rcycl.ppp, as.im(width.dens))
+auc(rcycl.ppp, as.im(width.dens))
+
+##### Gibbs process models -- TODO####
+
+
+#### Marked point process for segregation analysis ####
+rcycl.data = st_data %>% filter(rcycl == 1)
+rcycl.data = rcycl.data %>% filter(poss_roll == F | is.na(poss_roll))
+rcycl.ppp = as.ppp(rcycl.data)
+marks(rcycl.ppp) = rcycl.data$Artfct_t
+Window(rcycl.ppp) = win
+plot(rcycl.ppp)
+summary(rcycl.ppp)
+
+plot(density(split(rcycl.ppp)), useRaster = F)
+
+
+segregation.test(rcycl.ppp, nsim = 99) 
+#no spatial variation in recycled object type
+
+ttdata = rcycl.data %>% filter(!is.na(tool.type))
+ttrpp = as.ppp(ttdata)
+marks(ttrpp) = ttdata$tool.type
+Window(ttrpp) = win
+plot(ttrpp)
+segregation.test(ttrpp, nsim = 99) ###not working??
+plot(density(split(ttrpp)), useRaster = F)
+
+#weathering class
+wdata = rcycl.data %>% filter(!is.na(Wthrng_c))
+wppp = as.ppp(wdata)
+marks(wppp) = wdata$Wthrng_c
+Window(wppp) = win
+plot(wppp)
+segregation.test(wppp, nsim=99)
+#there is spatial segregation of weathering types among recycled implements
+plot(density(split(wppp)), useRaster=F)

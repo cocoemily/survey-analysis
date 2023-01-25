@@ -278,10 +278,24 @@ dem = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kaz
 dem_rpj = projectRaster(dem, crs = 32642)
 plot(dem_rpj)
 
-##not high resolution enough
 dem_crop = crop(dem_rpj, st_transform(st_as_sf(window), 32642))
 plot(dem_crop)
 
 dem_im = as.im(dem_crop)
 plot(dem_im, useRaster=F)
-Window(dem_im) = win
+
+
+slope.perc = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
+sp_rpj = projectRaster(slope.perc, crs = 32642)
+sp_crop = crop(sp_rpj, st_transform(st_as_sf(window), 32642))
+plot(sp_crop)
+sp_im = as.im(sp_crop)
+plot(sp_im, useRaster=F)
+
+slope.deg = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
+sd_rpj = projectRaster(slope.deg, crs = 32642)
+sd_crop = crop(sd_rpj, st_transform(st_as_sf(window), 32642))
+plot(sd_crop)
+sd_im = as.im(sp_crop)
+plot(sd_im, useRaster=F)
+
