@@ -11,14 +11,12 @@ library(lmtest)
 library(vcd)
 library(ggstatsplot)
 library(rcompanion)
-library(DataScienceR)
 library(lme4)
 library(QuantPsyc)
 
 source("site-comparison-functions.R")
 
 theme_set(theme_bw())
-
 
 #### DATA LOADING ####
 artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
@@ -133,8 +131,6 @@ all_artifacts = subset(all_artifacts, !(Id_number %in% rolled.rcycl$Id_number))
 rm(list = c("artifacts", "artifacts1", "artifacts2", "collections", "paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18", "s10", "rolled.rcycl"))
 
 
-table(all_artifacts$Retouch_side, all_artifacts$recycled)
-
 #### Differences by location ####
 ggplot(all_artifacts) +
   geom_bar(aes(recycled)) +
@@ -153,16 +149,9 @@ pairwiseNominalIndependence(at.table, simulate.p.value = T,
 #no difference between S10A and S4 or between P2 and P5 for artifact type distributions
 
 at.r.table = table(all_artifacts %>% dplyr::select(location, recycled, Artifact_type))
-dim(at.r.table)
-dimnames(at.r.table)
 at.r.table2 = apply(at.r.table, c(1,2,3), sum)
-
 at.r = as.data.frame(ftable(at.r.table))
-Table = xtabs(Freq ~ location + recycled + Artifact_type,
-              data=at.r)
-ftable(Table)
-
-mantelhaen.test(Table)
+Table = xtabs(Freq ~ location + recycled + Artifact_type, data=at.r)
 groupwiseCMH(Table,
              group   = 1,
              fisher  = TRUE,
@@ -183,6 +172,7 @@ ggplot(all_artifacts) +
   coord_flip() +
   scale_fill_colorblind()
 
+##error where model is nearly unidentifiable -- likely due to low numbers of certain artifact types
 rafit = glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = all_artifacts)
 summary(rafit)
 
@@ -213,16 +203,10 @@ pairwiseNominalIndependence(
 )
 
 rs.r.table = table(all_artifacts %>% dplyr::select(location, recycled, retouch.side))
-dim(rs.r.table)
-dimnames(rs.r.table)
 rs.r.table2 = apply(rs.r.table, c(1,2,3), sum)
-
 rs.r = as.data.frame(ftable(rs.r.table))
 Table = xtabs(Freq ~ location + recycled + retouch.side,
               data=rs.r)
-ftable(Table)
-
-mantelhaen.test(Table)
 groupwiseCMH(Table,
              group   = 1,
              fisher  = TRUE,
@@ -252,16 +236,10 @@ pairwiseNominalIndependence(
 #no difference in tool type distributions between 10A and 4, between P1 and P2, or between P2 and P5
 
 tt.r.table = table(all_artifacts %>% dplyr::select(location, recycled, tool.type))
-dim(tt.r.table)
-dimnames(tt.r.table)
 tt.r.table2 = apply(tt.r.table, c(1,2,3), sum)
-
 tt.r = as.data.frame(ftable(tt.r.table))
 Table = xtabs(Freq ~ location + recycled + tool.type,
               data=tt.r)
-ftable(Table)
-
-mantelhaen.test(Table)
 groupwiseCMH(Table,
              group   = 1,
              fisher  = TRUE,
@@ -367,6 +345,11 @@ reg.data.p1 = all_artifacts %>% filter(location == "Semizbugu P1") %>%
 
 fit.p1 = glm(recycled ~ ., family = binomial(), data = reg.data.p1)
 summary(fit.p1) 
+p1.df = tidy(fit.p1)
+p1.df$location = "Semizbugu P1"
+p1.df$signf = ifelse(p1.df$p.value < 0.05, "signf", "not signf")
+
+
 
 reg.data.p2 = all_artifacts %>% filter(location == "Semizbugu P2") %>%
   select("recycled", "Weathering_class",
@@ -376,6 +359,9 @@ reg.data.p2 = all_artifacts %>% filter(location == "Semizbugu P2") %>%
 
 fit.p2 = glm(recycled ~ ., family = binomial(), data = reg.data.p2)
 summary(fit.p2) 
+p2.df = tidy(fit.p2)
+p2.df$location = "Semizbugu P2"
+p2.df$signf = ifelse(p2.df$p.value < 0.05, "signf", "not signf")
 
 reg.data.p5 = all_artifacts %>% filter(location == "Semizbugu P5") %>%
   select("recycled", "Weathering_class",
@@ -385,6 +371,9 @@ reg.data.p5 = all_artifacts %>% filter(location == "Semizbugu P5") %>%
 
 fit.p5 = glm(recycled ~ ., family = binomial(), data = reg.data.p5)
 summary(fit.p5) 
+p5.df = tidy(fit.p1)
+p5.df$location = "Semizbugu P5"
+p5.df$signf = ifelse(p5.df$p.value < 0.05, "signf", "not signf")
 
 reg.data.s10a = all_artifacts %>% filter(location == "Semizbugu 10A") %>%
   select("recycled", "Weathering_class",
@@ -394,6 +383,9 @@ reg.data.s10a = all_artifacts %>% filter(location == "Semizbugu 10A") %>%
 
 fit.s10a = glm(recycled ~ ., family = binomial(), data = reg.data.s10a)
 summary(fit.s10a) 
+s10a.df = tidy(fit.s10a)
+s10a.df$location = "Semizbugu 10A"
+s10a.df$signf = ifelse(s10a.df$p.value < 0.05, "signf", "not signf")
 
 reg.data.s4 = all_artifacts %>% filter(location == "Semizbugu 4") %>%
   select("recycled", "Weathering_class",
@@ -403,4 +395,21 @@ reg.data.s4 = all_artifacts %>% filter(location == "Semizbugu 4") %>%
 
 fit.s4 = glm(recycled ~ ., family = binomial(), data = reg.data.s4)
 summary(fit.s4) 
+s4.df = tidy(fit.s4)
+s4.df$location = "Semizbugu 4"
+s4.df$signf = ifelse(s4.df$p.value < 0.05, "signf", "not signf")
+
+#jtools::plot_summs(fit.p1, fit.p2, fit.p5, fit.s10a, fit.s4)
+
+allregs = rbind(p1.df, p2.df, p5.df, s10a.df, s4.df)
+allregs$lower = allregs$estimate - allregs$std.error
+allregs$upper = allregs$estimate + allregs$std.error
+
+ggplot(allregs %>% filter(signf == "signf")) +
+  geom_hline(yintercept = 0, color = I("red")) +
+  geom_linerange(aes(x=term, ymin = lower, ymax = upper, group = location, color = location), position = position_dodge2(width = 0.5)) +
+  geom_point(aes(x=term, y = estimate, group = location, color = location, shape = location), position = position_dodge2(width = 0.5), size = 2) +
+  coord_flip() +
+  scale_color_colorblind() +
+  scale_shape_manual(values = c(0:2,5))
 

@@ -249,3 +249,39 @@ marks(rcycl.ppp) = rcycl.data$Wthrng_c
 plot(rcycl.ppp)
 segregation.test(rcycl.ppp, nsim = 99) 
 #no spatial segregation in weathering of recycled objects
+
+
+#### Figure -- recycling types spatial ####
+sp.p1 = readOGR("data/artifact-shapefiles", "p1-artifacts")
+sp.p1 = sp.p1[sp.p1$Id_nm %in% p1$Id_number,]
+
+sp.p1@data = sp.p1@data %>%
+  mutate(Recycling_type =
+           ifelse(str_detect(Rcyclng_n, "none"), "none", 
+                  ifelse(str_detect(Rcyclng_n, " "), "multiple", 
+                         Rcyclng_n))) %>%
+  mutate(Recycling_type = str_replace_all(Recycling_type, "_", " ")) %>%
+  mutate(Recycling_type = ifelse(Recycling_type == "core on flake blade", "core on flake/blade", Recycling_type))
+sp.p1@data$Recycling_type = factor(sp.p1@data$Recycling_type, 
+                                   levels = c("double patina", "core on flake/blade", "core on hammerstone", "multiple", "other", "none"))
+
+sf.p1 = st_as_sf(sp.p1)
+
+pal1 = c("double patina" = "#CC6677", 
+         "core on flake/blade" = "#DDCC77", 
+         "core on hammerstone" = "#117733", 
+         "multiple" = "#332288", 
+         "other" = "#AA4499", 
+         "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888")
+
+plot.sf.p1 = sf.p1[!is.na(sf.p1$Recycling_type),]
+
+rt.spat.plot = ggplot() +
+  geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type == "none",], size = 0.25, alpha = 0.25) +
+  geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type != "none",], aes(color = Recycling_type), size = 1) +
+  #scale_color_colorblind() +
+  scale_color_manual(values = pal1) +
+  labs(color = "Recycling signature")
+#ggsave(plot = rt.spat.plot, file = "~/Desktop/NYU/Dissertation-Research/papers/Coco_AK/figures/p1-recycling-signature-spatial.tiff")
+
+plot(rt.spat.plot)
