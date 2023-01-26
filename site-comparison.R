@@ -12,6 +12,8 @@ library(vcd)
 library(ggstatsplot)
 library(rcompanion)
 library(DataScienceR)
+library(lme4)
+library(QuantPsyc)
 
 source("site-comparison-functions.R")
 
@@ -52,7 +54,7 @@ s10a = collections %>% filter(location == 'Semizbugu 10A')
 s4 = collections %>% filter(location == "Semizbugu 4")
 
 cols = c("Id_number", "location", "recycled", "double_patina", "Raw_material_description", 
-         "Weathering_class", "Artifact_type", "Bordian_type", "Tool_type", "Flake_type", 
+         "Weathering_class", "Artifact_type", "Bordian_type", "Tool_type", "Flake_type", "Blank_form",
          "Dorsal_flake_scar_count", "Cortex_percentage", "Flake_fragment", "Flake_termination",
          "Retouch", "Retouch_side", "Edge_damage",
          "Platform_thickness", "Platform_width",
@@ -78,7 +80,15 @@ all_artifacts$Flake_termination = factor(all_artifacts$Flake_termination,
                                          levels = c("feather", "hinge", "plunge", "step", "other"))
 all_artifacts$Flake_fragment = factor(all_artifacts$Flake_fragment , 
                                          levels = c("proximal", "medial", "distal", "other"))
-all_artifacts$Retouch_side = factor(all_artifacts$Retouch_side, levels = c("dorsal", "ventral", "bifacial"))
+
+all_artifacts$retouch.side = ifelse(str_detect(all_artifacts$Retouch_side, pattern = " "), "bifacial", all_artifacts$Retouch_side)
+all_artifacts$retouch.side = factor(all_artifacts$retouch.side, levels = c("dorsal", "ventral", "bifacial"))
+#all_artifacts$Retouch_side = factor(all_artifacts$Retouch_side, levels = c("dorsal", "ventral", "bifacial"))
+
+all_artifacts$tool.type = ifelse(str_detect(all_artifacts$Tool_type, "notch denticulate"), "notch/denticulate", 
+                        ifelse(str_detect(all_artifacts$Tool_type, " "), "multiple", 
+                               all_artifacts$Tool_type))
+all_artifacts$tool.type = factor(all_artifacts$tool.type, levels = c("notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"))
 
 all_artifacts = all_artifacts %>%
   mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
@@ -86,6 +96,8 @@ all_artifacts = all_artifacts %>%
          Width = ifelse(is.na(Flake_width), Maximum_core_width, Flake_width)) %>%
   filter(Length <= 200 & Width <= 200 & Thickness <= 200) #size of calipers
 
+all_artifacts = all_artifacts %>%
+  mutate(flake.type = ifelse(is.na(Blank_form), Flake_type, Blank_form))
 
 source("bordian_types_dictionary.R")
 all_artifacts$Bordian_name = ""
@@ -121,6 +133,8 @@ all_artifacts = subset(all_artifacts, !(Id_number %in% rolled.rcycl$Id_number))
 rm(list = c("artifacts", "artifacts1", "artifacts2", "collections", "paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18", "s10", "rolled.rcycl"))
 
 
+table(all_artifacts$Retouch_side, all_artifacts$recycled)
+
 #### Differences by location ####
 ggplot(all_artifacts) +
   geom_bar(aes(recycled)) +
@@ -136,18 +150,55 @@ pairwiseNominalIndependence(rl.table, simulate.p.value = T,
 at.table = table(all_artifacts %>% dplyr::select(location, Artifact_type))
 pairwiseNominalIndependence(at.table, simulate.p.value = T, 
                             fisher = T, chisq = F, gtest = F)
-#no difference between S10A and S4 or between P2 and P5
+#no difference between S10A and S4 or between P2 and P5 for artifact type distributions
+
+at.r.table = table(all_artifacts %>% dplyr::select(location, recycled, Artifact_type))
+dim(at.r.table)
+dimnames(at.r.table)
+at.r.table2 = apply(at.r.table, c(1,2,3), sum)
+
+at.r = as.data.frame(ftable(at.r.table))
+Table = xtabs(Freq ~ location + recycled + Artifact_type,
+              data=at.r)
+ftable(Table)
+
+mantelhaen.test(Table)
+groupwiseCMH(Table,
+             group   = 1,
+             fisher  = TRUE,
+             gtest   = FALSE,
+             chisq   = FALSE,
+             method  = "fdr",
+             correct = "none",
+             digits  = 3, 
+             simulate.p.value = T)
+# Hypotheses
+# •  Null hypothesis:  There is no association between the two inner variables.
+# •  Alternative hypothesis (two-sided): There is an association between the two inner variables.
+##suggests that there an association between recycling and artifact type at all sites, except for Semizbugu 10A
+
+ggplot(all_artifacts) +
+  geom_bar(aes(x = Artifact_type, fill = recycled)) +
+  facet_wrap(~location) +
+  coord_flip() +
+  scale_fill_colorblind()
+
+rafit = glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = all_artifacts)
+summary(rafit)
+
+
 
 wc.table = table(all_artifacts %>% dplyr::select(location, Weathering_class))
 pairwiseNominalIndependence(wc.table, simulate.p.value = T, 
                             fisher = T, chisq = F, gtest = F)
-#no difference between P2 and P5
+#no difference between P2 and P5 in distribution of artifacts among weathering classes
 
 pairwiseNominalIndependence(
   table(all_artifacts %>% dplyr::select(location, Retouch)),
   simulate.p.value = T, 
   fisher = T, chisq = F, gtest = F
 )
+#Semizbugu 4 has significant differences in distribution of retouch (presence/absence) compared to all other sites
 
 pairwiseNominalIndependence(
   table(all_artifacts %>% dplyr::select(location, Edge_damage)),
@@ -156,10 +207,36 @@ pairwiseNominalIndependence(
 )
 
 pairwiseNominalIndependence(
-  table(all_artifacts %>% dplyr::select(location, Retouch_side)),
+  table(all_artifacts %>% dplyr::select(location, retouch.side)),
   simulate.p.value = T, 
   fisher = T, chisq = F, gtest = F
 )
+
+rs.r.table = table(all_artifacts %>% dplyr::select(location, recycled, retouch.side))
+dim(rs.r.table)
+dimnames(rs.r.table)
+rs.r.table2 = apply(rs.r.table, c(1,2,3), sum)
+
+rs.r = as.data.frame(ftable(rs.r.table))
+Table = xtabs(Freq ~ location + recycled + retouch.side,
+              data=rs.r)
+ftable(Table)
+
+mantelhaen.test(Table)
+groupwiseCMH(Table,
+             group   = 1,
+             fisher  = TRUE,
+             gtest   = FALSE,
+             chisq   = FALSE,
+             method  = "fdr",
+             correct = "none",
+             digits  = 3, 
+             simulate.p.value = T)
+# Hypotheses
+# •  Null hypothesis:  There is no association between the two inner variables.
+# •  Alternative hypothesis (two-sided): There is an association between the two inner variables.
+##no association between recycling and retouch side at any sites
+
 
 pairwiseNominalIndependence(
   table(all_artifacts %>% dplyr::select(location, Bordian_name)),
@@ -168,13 +245,39 @@ pairwiseNominalIndependence(
 )
 
 pairwiseNominalIndependence(
-  table(all_artifacts %>% dplyr::select(location, Tool_type)),
+  table(all_artifacts %>% dplyr::select(location, tool.type)),
   simulate.p.value = T, 
   fisher = T, chisq = F, gtest = F
 )
+#no difference in tool type distributions between 10A and 4, between P1 and P2, or between P2 and P5
+
+tt.r.table = table(all_artifacts %>% dplyr::select(location, recycled, tool.type))
+dim(tt.r.table)
+dimnames(tt.r.table)
+tt.r.table2 = apply(tt.r.table, c(1,2,3), sum)
+
+tt.r = as.data.frame(ftable(tt.r.table))
+Table = xtabs(Freq ~ location + recycled + tool.type,
+              data=tt.r)
+ftable(Table)
+
+mantelhaen.test(Table)
+groupwiseCMH(Table,
+             group   = 1,
+             fisher  = TRUE,
+             gtest   = FALSE,
+             chisq   = FALSE,
+             method  = "fdr",
+             correct = "none",
+             digits  = 3, 
+             simulate.p.value = T)
+# Hypotheses
+# •  Null hypothesis:  There is no association between the two inner variables.
+# •  Alternative hypothesis (two-sided): There is an association between the two inner variables.
+##suggests that there an association between recycling and tool type at P5 and S4, but not at the other sites
 
 pairwiseNominalIndependence(
-  table(all_artifacts %>% dplyr::select(location, Flake_type)),
+  table(all_artifacts %>% dplyr::select(location, flake.type)),
   simulate.p.value = T, 
   fisher = T, chisq = F, gtest = F
 )
@@ -208,185 +311,96 @@ pairwiseKS(all_artifacts %>% dplyr::select(location, Platform_width))
 pairwiseKS(all_artifacts %>% dplyr::select(location, Dorsal_flake_scar_count))
 
 
+#### Regressions between locations ####
+##does location explain more variation than other variables?
+reg.data = all_artifacts %>% select("recycled", "Weathering_class", 
+                                    "Dorsal_flake_scar_count", "Cortex_percentage",
+                                    "Thickness", "Length", "Width", 
+                                    "Weight")
+reg.data$recycled = as.factor(reg.data$recycled)
+
+fit1 = glm(recycled ~ ., family = binomial(), data = reg.data)
+summary(fit1)
+
+reg.data2 = all_artifacts %>% select("location", "recycled", "Weathering_class", 
+                                     "Dorsal_flake_scar_count", "Cortex_percentage",
+                                     "Thickness", "Length", "Width", 
+                                     "Weight")
+fit2 = glm(recycled ~ ., family = binomial(), data = reg.data2)
+summary(fit2)
+
+anova(fit1, fit2, test = "LR")
+##need to include location, but weakly and not weathered artifacts are still less recycled, 
+##and overall long and wide artifacts are more likely to be recycled, but also thinner artifacts
+
+###### standardized coefficients#####
+scoef = as.data.frame(lm.beta::lm.beta(fit2)[["standardized.coefficients"]])
+scoef$var = rownames(scoef)
+colnames(scoef) = c("coef", "var")
+rownames(scoef) = NULL
+scoef$abs_coef = abs(scoef$coef)
+scoef = scoef %>% filter(!is.na(abs_coef))
+
+scoef$var = factor(scoef$var, 
+                   levels = c(
+                     "locationSemizbugu 4", "locationSemizbugu P1", "locationSemizbugu P2", "locationSemizbugu P5", 
+                     "Weathering_classmildly_weathered", "Weathering_classweakly_weathered", "Weathering_classnot_weathered", "Weathering_classother",
+                     "Dorsal_flake_scar_count", "Cortex_percentage", 
+                     "Length", "Width", "Thickness", "Weight"
+                   ))
+scoef$var = fct_rev(scoef$var)
+
+ggplot(scoef) +
+  geom_hline(yintercept = 0, color = I("red")) +
+  geom_hline(yintercept = min((scoef %>% filter(str_detect(var, "location")))$abs_coef), color = I("grey"), linetype = "dashed") +
+  geom_point(aes(x = var, y = abs_coef, color = var))+
+  coord_flip() +
+  theme(legend.position = "none")
 
 
+#####multiple regressions for each of the locations #####
+reg.data.p1 = all_artifacts %>% filter(location == "Semizbugu P1") %>%
+  select("recycled", "Weathering_class",
+         "Dorsal_flake_scar_count", "Cortex_percentage",
+         "Length", "Width", "Thickness", 
+         "Weight")
 
+fit.p1 = glm(recycled ~ ., family = binomial(), data = reg.data.p1)
+summary(fit.p1) 
 
+reg.data.p2 = all_artifacts %>% filter(location == "Semizbugu P2") %>%
+  select("recycled", "Weathering_class",
+         "Dorsal_flake_scar_count", "Cortex_percentage",
+         "Length", "Width", "Thickness", 
+         "Weight")
 
+fit.p2 = glm(recycled ~ ., family = binomial(), data = reg.data.p2)
+summary(fit.p2) 
 
+reg.data.p5 = all_artifacts %>% filter(location == "Semizbugu P5") %>%
+  select("recycled", "Weathering_class",
+         "Dorsal_flake_scar_count", "Cortex_percentage",
+         "Length", "Width", "Thickness", 
+         "Weight")
 
+fit.p5 = glm(recycled ~ ., family = binomial(), data = reg.data.p5)
+summary(fit.p5) 
 
+reg.data.s10a = all_artifacts %>% filter(location == "Semizbugu 10A") %>%
+  select("recycled", "Weathering_class",
+         "Dorsal_flake_scar_count", "Cortex_percentage",
+         "Length", "Width", "Thickness", 
+         "Weight")
 
-#### old code ####
-rl.table = table(artifacts %>% dplyr::select(location,recycled))
-dim(rl.table)
-dimnames(rl.table)
-rl.table2 = apply(rl.table, c(1,2), sum)
+fit.s10a = glm(recycled ~ ., family = binomial(), data = reg.data.s10a)
+summary(fit.s10a) 
 
-M3 = loglm( ~ recycled * location, dat=rl.table2, fit=TRUE)
-M4 = update(M3, ~ . - location:recycled)
-#anova(M3, M4)
-chisq.test(rl.table2)
-#results indicate that there is a significant interaction between location and recycling
-#this means that there is a difference in the recycled object amounts between locations
+reg.data.s4 = all_artifacts %>% filter(location == "Semizbugu 4") %>%
+  select("recycled", "Weathering_class",
+         "Dorsal_flake_scar_count", "Cortex_percentage",
+         "Length", "Width", "Thickness", 
+         "Weight")
 
-
-#Artifact types by location
-ggplot(artifacts) +
-  geom_bar(aes(Artifact_type)) +
-  facet_wrap(~location) +
-  coord_flip()
-
-atl.table = table(artifacts %>% dplyr::select(location,Artifact_type))
-dim(atl.table)
-dimnames(atl.table)
-atl.table2 = apply(atl.table, c(1,2), sum)
-
-M5 = loglm( ~ Artifact_type * location, dat=atl.table2, fit=TRUE)
-M6 = update(M5, ~ . - location:Artifact_type)
-#anova(M5, M6)
-chisq.test(atl.table2)
-#results indicate that there is a significant interaction between location and artifact type
-#this means that there is a difference in the types of artifact amounts between locations
-
-  
-
-## what types of objects are recycled?
-recycled_objects_artifact_type = function(data) {
-  df1 = data %>% group_by(location, Artifact_type, recycled) %>%
-    summarize(count = n()) %>%
-    group_by(location, Artifact_type) %>%
-    mutate(percent = count/sum(count))
-  return(df1)
-}
-
-ro_at = recycled_objects_artifact_type(artifacts)
-# ggplot(ro_at) +
-#   geom_col(aes(x = Artifact_type, y = percent, fill = recycled)) +
-#   facet_wrap(~location) +
-#   coord_flip()
-
-
-##chi squared tests -- artifact type and recycling
-test = table(artifacts %>% dplyr::select(location, Artifact_type, recycled))
-dim(test)
-dimnames(test)
-test2 = apply(test, c(1,2,3), sum)
-
-M = loglm( ~ Artifact_type * recycled * location, dat=test2, fit=TRUE)
-M2 = update(M, ~ . - Artifact_type:location:recycled)
-M3 = update(M, ~ . - Artifact_type:location:recycled - Artifact_type:location )
-M4 = update(M, ~ . - Artifact_type:location:recycled - recycled:location)
-M5 = update(M, ~ . - Artifact_type:location:recycled - recycled:Artifact_type)
-
-anova(M, M2)
-anova(M, M3)
-anova(M, M4)
-anova(M, M5)
-#all the two way interactions seem to all contribute signficantly
-#to the model, as does the three way interaction term -- interpretation?
-
-
-#Raw materials by location
-ggplot(artifacts) +
-  geom_bar(aes(Raw_material_description)) +
-  facet_wrap(~location) +
-  coord_flip()
-
-rml.table = table(artifacts %>% dplyr::select(location,Raw_material_description))
-dim(rml.table)
-dimnames(rml.table)
-rml.table2 = apply(rml.table, c(1,2), sum)
-
-M7 = loglm( ~ Raw_material_description * location, dat=rml.table2, fit=TRUE)
-M8 = update(M7, ~ . - location:Raw_material_description)
-anova(M7, M8)
-chisq.test(rml.table2)
-fisher.test(rml.table2, simulate.p.value = T)
-#results indicate that there is a significant interaction between location and raw material type
-#this means that there is a difference in the types of raw material amounts between locations
-#this is consistent with visual findings, because P5 had many more different types of raw materials than P1 or P2
-
-##chi squared tests -- Raw material description and recycling
-test = table(artifacts %>% dplyr::select(location, Raw_material_description, recycled))
-dim(test)
-dimnames(test)
-test2 = apply(test, c(1,2,3), sum)
-
-M = loglm( ~ Raw_material_description * recycled * location, dat=test2, fit=TRUE)
-M2 = update(M, ~ . - Raw_material_description:location:recycled)
-M3 = update(M, ~ . - Raw_material_description:location:recycled - Raw_material_description:location )
-M4 = update(M, ~ . - Raw_material_description:location:recycled - recycled:location)
-M5 = update(M, ~ . - Raw_material_description:location:recycled - recycled:Raw_material_description)
-
-anova(M, M2)
-#three way interaction term does not contribute significantly to the model
-anova(M, M3)
-#raw material:location contributes significantly
-anova(M, M4)
-#recycled:location contributes signficantly
-anova(M, M5)
-#Raw_material:recycling interaction does not contribute significantly to the model
-
-#within each site, raw material does not dictate whether or not something will be recycled
-
-
-#Weathering class by location
-ggplot(artifacts) +
-  geom_bar(aes(Weathering_class)) +
-  facet_wrap(~location) +
-  coord_flip()
-
-wcl.table = table(artifacts %>% dplyr::select(location,Weathering_class))
-dim(wcl.table)
-dimnames(wcl.table)
-wcl.table2 = apply(wcl.table, c(1,2), sum)
-
-M9 = loglm( ~ Weathering_class * location, dat=wcl.table2, fit=TRUE)
-M10 = update(M9, ~ . - location:Weathering_class)
-#anova(M9, M10)
-chisq.test(wcl.table2)
-#results indicate that there is a significant relationship between location and weathering class
-#this means that there is a difference in the weathering class amounts between locations
-
-##chi squared tests -- weathering class and recycling
-test = table(artifacts %>% dplyr::select(location, Weathering_class, recycled))
-dim(test)
-dimnames(test)
-test2 = apply(test, c(1,2,3), sum)
-
-M = loglm( ~ Weathering_class * recycled * location, dat=test2, fit=TRUE)
-M2 = update(M, ~ . - Weathering_class:location:recycled)
-M3 = update(M, ~ . - Weathering_class:location )
-M4 = update(M, ~ . - recycled:location)
-M5 = update(M, ~ . - recycled:Weathering_class)
-
-anova(M, M2)
-#three way interaction contributes significantly to the model
-anova(M, M3)
-anova(M, M4)
-anova(M, M5)
-#so do all of the two way interactions
-#this indicates that weathering class different affects which artifacts are recycled at different locations
-
-#Size of recycled objects by location
-plot(ks_test_recycled_vs_not(p1, positions = c(160, 175, 90, 2500)))
-plot(ks_test_recycled_vs_not(p2, positions = c(150, 155, 80, 1050)))
-plot(ks_test_recycled_vs_not(p5, positions = c(180, 160, 100, 1300)))
-
-plot(ks_test_recycled_vs_not(artifacts))
-
-
-dist_comp_recycled_vs_all(artifacts)
-
-
-#Size of recycled objects compared between locations
-dist_comp_recycled_vs_all(p1)
-dist_comp_recycled_vs_all(p2)
-dist_comp_recycled_vs_all(p5)
-
-cowplot::plot_grid(dist_comp_recycled_vs_all(p1),
-                   dist_comp_recycled_vs_all(p2),
-                   dist_comp_recycled_vs_all(p5),
-                   ncol = 1)
+fit.s4 = glm(recycled ~ ., family = binomial(), data = reg.data.s4)
+summary(fit.s4) 
 
