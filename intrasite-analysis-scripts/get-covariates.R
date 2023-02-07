@@ -41,7 +41,7 @@ if(nrow(pppdata) > 0) {
   broke_flk.dens = density(broke_flk.ppp, sigma = bw.diggle, adjust = 2)
 }
 
-pppdata = st_data %>% filter(tool == 1)
+pppdata = st_data %>% filter(tool == 1 | tool_frag == 1)
 if(nrow(pppdata) > 0) {
   tool.ppp = as.ppp(pppdata)
   marks(tool.ppp) = NULL
@@ -49,15 +49,15 @@ if(nrow(pppdata) > 0) {
   tool.dens = density(tool.ppp, sigma = bw.diggle)
 }
 
-pppdata = st_data %>% filter(tool_frag == 1)
-if(nrow(pppdata) > 0) {
-  tool_frag.ppp = as.ppp(pppdata)
-  marks(tool_frag.ppp) = NULL
-  Window(tool_frag.ppp) = win
-  tool_frag.dens = density(tool_frag.ppp, sigma = bw.diggle, adjust = 2)
-}
+# pppdata = st_data %>% filter(tool_frag == 1)
+# if(nrow(pppdata) > 0) {
+#   tool_frag.ppp = as.ppp(pppdata)
+#   marks(tool_frag.ppp) = NULL
+#   Window(tool_frag.ppp) = win
+#   tool_frag.dens = density(tool_frag.ppp, sigma = bw.diggle, adjust = 2)
+# }
 
-pppdata = st_data %>% filter(core == 1)
+pppdata = st_data %>% filter(core == 1 | core_frag == 1)
 if(nrow(pppdata) > 0) {
   core.ppp = as.ppp(pppdata)
   marks(core.ppp) = NULL
@@ -65,13 +65,13 @@ if(nrow(pppdata) > 0) {
   core.dens = density(core.ppp, sigma = bw.diggle, adjust = 2)
 }
 
-pppdata = st_data %>% filter(core_frag == 1)
-if(nrow(pppdata) > 0) {
-  core_frag.ppp = as.ppp(pppdata)
-  marks(core_frag.ppp) = NULL
-  Window(core_frag.ppp) = win
-  core_frag.dens = density(core_frag.ppp, sigma = bw.diggle, adjust = 2)
-}
+# pppdata = st_data %>% filter(core_frag == 1)
+# if(nrow(pppdata) > 0) {
+#   core_frag.ppp = as.ppp(pppdata)
+#   marks(core_frag.ppp) = NULL
+#   Window(core_frag.ppp) = win
+#   core_frag.dens = density(core_frag.ppp, sigma = bw.diggle, adjust = 2)
+# }
 
 pppdata = st_data %>% filter(shatter == 1)
 if(nrow(pppdata) > 0) {
@@ -278,7 +278,9 @@ dem = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kaz
 dem_rpj = projectRaster(dem, crs = 32642)
 plot(dem_rpj)
 
-dem_crop = crop(dem_rpj, st_transform(st_as_sf(window), 32642))
+b_window = st_buffer(st_as_sf(window), 1)
+
+dem_crop = crop(dem_rpj, st_transform(st_as_sf(b_window), 32642))
 plot(dem_crop)
 
 dem_im = as.im(dem_crop)
@@ -287,15 +289,15 @@ plot(dem_im, useRaster=F)
 
 slope.perc = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
 sp_rpj = projectRaster(slope.perc, crs = 32642)
-sp_crop = crop(sp_rpj, st_transform(st_as_sf(window), 32642))
+sp_crop = crop(sp_rpj, st_transform(st_as_sf(b_window), 32642))
 plot(sp_crop)
 sp_im = as.im(sp_crop)
 plot(sp_im, useRaster=F)
 
 slope.deg = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
 sd_rpj = projectRaster(slope.deg, crs = 32642)
-sd_crop = crop(sd_rpj, st_transform(st_as_sf(window), 32642))
+sd_crop = crop(sd_rpj, st_transform(st_as_sf(b_window), 32642))
 plot(sd_crop)
-sd_im = as.im(sp_crop)
+sd_im = as.im(sd_crop)
 plot(sd_im, useRaster=F)
 

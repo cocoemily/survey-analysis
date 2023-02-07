@@ -12,13 +12,15 @@ library(tmap)
 library(spatstat)
 library(AICcmodavg)
 
+theme_set(theme_bw())
+
 p2.artifacts = readOGR("/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/data/artifact-shapefiles/", layer = "p2-artifacts")
 p2.window = readOGR("/Users/emilycoco/Desktop/NYU/Dissertation-Research/Survey/survey-analysis/output/square-extents/", layer = "p2-sqs")
 
 data = p2.artifacts
 window = p2.window
 
-source("spatial-analysis-scripts/clean-data.R")
+source("intrasite-analysis-scripts/clean-data.R")
 #source("spatial-analysis-scripts/get-covariates.R")
 
 st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
@@ -49,25 +51,13 @@ plot(Kin)
 Lin = Linhom(ppp, lambda = Dnn)
 plot(Lin)
 #both K and L fall slight below the poisson line --> points are slightly more dispersed than expected
-## total point process needs to be assessed as a Gibbs model?
-plot(dem_im)
 
-cdf.test(ppp, dem_im)
-cdf.test(ppp, sp_im)
-cdf.test(ppp, sd_im)
-#location of points dependent on elevation and slope
-
-###### TODO####
-fit1 = ppm(ppp ~ dem_im)
-summary(fit1)
-plot(fit1, useRaster=F)
-fitted.artifact.dens = intensity(fit1)
 
 ###### segregation tests #####
 #null = spatially constant
 #artifact types
 ppp = as.ppp(st_data)
-marks(ppp) = st_data$Artfct_t
+marks(ppp) = factor(st_data$Artfct_t)
 Window(ppp) = win
 plot(ppp)
 segregation.test(ppp, nsim=99)
@@ -76,7 +66,7 @@ plot(density(split(ppp)), useRaster=F)
 
 #weathering class with other weathering
 ppp = as.ppp(st_data)
-marks(ppp) = st_data$Wthrng_c
+marks(ppp) = factor(st_data$Wthrng_c)
 Window(ppp) = win
 plot(ppp)
 segregation.test(ppp, nsim=99) 
@@ -93,9 +83,10 @@ segregation.test(wppp, nsim=99)
 plot(density(split(wppp)), useRaster=F)
 #spatial segregation of weathering types
 
-ttdata = st_data %>% filter(!is.na(tool.type))
+ttdata = st_data %>% filter(!is.na(tool.type)) %>% filter(tool.type != "notch/denticulate")
+ttdata$tool.type = droplevels(ttdata$tool.type)
 ttppp = as.ppp(ttdata)
-marks(ttppp) = ttdata$tool.type
+marks(ttppp) = as.factor(ttdata$tool.type)
 Window(ttppp) = win
 plot(ttppp)
 segregation.test(ttppp, nsim=99) #not working??
@@ -140,100 +131,140 @@ plot(Ls)
 Ls = Lest(rcycl.ppp, lambda = D)
 plot(Ls)
 #both K and L fall above the poisson line --> points are more clustered than expected
-##model recycled PPP as Cox/Cluster models, maybe a Poisson though?
 
+####DEPENDENCE####
 
-##### Dependence of recycling points intensity on elevation and slope #####
 ##cdf null hypothesis - CDF of the covariate at all points is equal 
 ## to the CDF of covariate evaluated at the location of the point pattern
+get_dependence_results = function(rcycl.ppp, covar, covar_string, test_string) {
+  if(str_detect(test_string, "less")) {
+    return(c(
+      covar_string, test_string, 
+      cdf.test(rcycl.ppp, covar, alternative = "less")['p.value'], 
+      auc(rcycl.ppp, covar)
+    ))
+  } else if(str_detect(test_string, "greater")) {
+    return(c(
+      covar_string, test_string, 
+      cdf.test(rcycl.ppp, covar, alternative = "greater")['p.value'], 
+      auc(rcycl.ppp, covar)
+    ))
+  }else {
+    return(c(
+      covar_string, test_string, 
+      cdf.test(rcycl.ppp, covar)['p.value'], 
+      auc(rcycl.ppp, covar)
+    ))
+    
+  }
+}
 
-cdf.test(rcycl.ppp, dem_im)
-cdf.test(rcycl.ppp, sp_im)
-cdf.test(rcycl.ppp, sd_im)
 
-auc(rcycl.ppp, sd_im)
-auc(rcycl.ppp, sp_im)
+dr = data.frame(
+  covariate = character(), 
+  test = character(), 
+  p.val = integer(), 
+  auc = integer()
+)
+
+##### Dependence of recycling points intensity on elevation and slope #####
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, dem_im, "DEM", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, dem_im, "DEM", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, dem_im, "DEM", "one-sided: greater")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sp_im, "slope percentage", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sp_im, "slope percentage", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sp_im, "slope percentage", "one-sided: greater")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sd_im, "slope degrees", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sd_im, "slope degrees", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sd_im, "slope degrees", "one-sided: greater")
 
 ##### Dependence of recycling points intensity on underlying artifact density ####
-sqrt(nrow(st_data))
-Dnn = nndensity(ppp, k = 25)
-plot(Dnn)
+D = density(ppp, sigma=bw.diggle)
+plot(D, useRaster=F)
 
-cdf.test(rcycl.ppp, as.im(Dnn))
-berman.test(rcycl.ppp, as.im(Dnn))
-berman.test(rcycl.ppp, as.im(Dnn), "Z2")
-
-auc(rcycl.ppp, as.im(Dnn))
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(D), "artifact density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(D), "artifact density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(D), "artifact density", "one-sided: greater")
 
 
 ##### Dependence of recycling points intensity on underlying density of retouched artifacts ####
-cdf.test(rcycl.ppp, as.im(retouch.dens))
-berman.test(rcycl.ppp, as.im(retouch.dens))
-berman.test(rcycl.ppp, as.im(retouch.dens), "Z2")
-
-auc(rcycl.ppp, as.im(retouch.dens))
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(retouch.dens), "retouched artifact density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(retouch.dens), "retouched artifact density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(retouch.dens), "retouched artifact density", "one-sided: greater")
 
 ##### Volumetric and weight dependence #####
-cdf.test(rcycl.ppp, as.im(weight.dens))
-auc(rcycl.ppp, as.im(weight.dens))
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weight.dens), "artifact weight density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weight.dens), "artifact weight density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weight.dens), "artifact weight density", "one-sided: greater")
 
-cdf.test(rcycl.ppp, as.im(thick.dens))
-auc(rcycl.ppp, as.im(thick.dens))
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(thick.dens), "artifact thickness density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(thick.dens), "artifact thickness density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(thick.dens), "artifact thickness density", "one-sided: greater")
 
-cdf.test(rcycl.ppp, as.im(length.dens))
-auc(rcycl.ppp, as.im(length.dens))
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(length.dens), "artifact length density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(length.dens), "artifact length density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(length.dens), "artifact length density", "one-sided: greater")
 
-cdf.test(rcycl.ppp, as.im(width.dens))
-auc(rcycl.ppp, as.im(width.dens))
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(width.dens), "artifact width density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(width.dens), "artifact width density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(width.dens), "artifact width density", "one-sided: greater")
 
-##### Cox process models -- NOT WORKING ####
-fit0 = kppm(rcycl.ppp ~ 1, "LGCP", method = "clik2")
-AIC(fit0)
-fit1 = kppm(rcycl.ppp ~ artifact.dens, clusters = "LGCP", method = "clik2")
-AIC(fit1)
-summary(fit1)
-plot(fit1, useRaster=F)
+##### Artifact type dependence #####
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(compl_flk.dens), "complete flake density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(compl_flk.dens), "complete flake density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(compl_flk.dens), "complete flake density", "one-sided: greater")
 
-fit2 = kppm(rcycl.ppp ~ artifact.dens + retouch.dens + cortex.dens +
-              compl_flk.dens + broke_flk.dens + tool.dens + tool_frag.dens +
-              core.dens , clusters = "LGCP", method = "clik2")
-AIC(fit2)
-summary(fit2)
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(broke_flk.dens), "broken flake density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(broke_flk.dens), "broken flake density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(broke_flk.dens), "broken flake density", "one-sided: greater")
 
-fit3 = kppm(rcycl.ppp ~ artifact.dens + 
-              weight.dens + length.dens + width.dens + thick.dens +
-              mid_weather.dens + weak_weather.dens + str_weather.dens +
-              retouch.dens + cortex.dens +
-              compl_flk.dens + broke_flk.dens + tool.dens + tool_frag.dens +
-              core.dens + core_frag.dens
-            , clusters = "LGCP", method = "clik2")
-AIC(fit3)
-drop1(fit3)
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(core.dens), "core density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(core.dens), "core density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(core.dens), "core density", "one-sided: greater")
 
-fit4 = kppm(rcycl.ppp ~ artifact.dens + 
-              weight.dens + length.dens + width.dens + thick.dens
-            , clusters = "LGCP", method = "clik2")
-AIC(fit4)
-drop1(fit4)
-summary(fit4)
-
-fit5 = kppm(rcycl.ppp ~ artifact.dens + 
-              mid_weather.dens + weak_weather.dens + str_weather.dens 
-            , clusters = "LGCP", method = "clik2")
-AIC(fit5) #poor fit
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(tool.dens), "tool density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(tool.dens), "tool density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(tool.dens), "tool density", "one-sided: greater")
 
 
+##### Weathering class dependence #####
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(str_weather.dens), "strongly weathered artifact density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(str_weather.dens), "strongly weathered artifact density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(str_weather.dens), "strongly weathered artifact density", "one-sided: greater")
+
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(mid_weather.dens), "mildly weathered artifact density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(mid_weather.dens), "mildly weathered artifact density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(mid_weather.dens), "mildly weathered artifact density", "one-sided: greater")
+
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: greater")
+
+dr$signif = ifelse(dr$p.val < 0.05, TRUE, FALSE)
+dr$covariate = factor(dr$covariate, 
+                      levels = c(
+                        "artifact density", "retouched artifact density",
+                        "complete flake density", "broken flake density", 
+                        "tool density", "core density", 
+                        "strongly weathered artifact density", "mildly weathered artifact density", "weakly weathered artifact density", 
+                        "artifact length density", "artifact width density", "artifact thickness density", "artifact weight density", 
+                        "DEM", "slope percentage", "slope degrees"
+                      ))
+
+dplot = ggplot(dr %>% filter(signif == TRUE) %>% filter(test != "two-sided")) +
+  geom_col(aes(x = covariate, y = auc)) +
+  geom_abline(aes(intercept = 0.5, slope = 0), color = "red") +
+  coord_flip() +
+  facet_wrap(~test, nrow = 1)
+plot(dplot)
+ggsave(filename = "figures/p2-dependence-auc.tiff", dpi = 300)
 
 #### Marked point process for segregation analysis ####
 marks(rcycl.ppp) = rcycl.data$Artfct_t
 plot(rcycl.ppp)
 plot(unmark(rcycl.ppp))
 summary(rcycl.ppp)
-
 plot(density(split(rcycl.ppp)), useRaster = F)
-
-lambda = intensity(rcycl.ppp)
-probs = lambda/sum(lambda) #for homogeneous process
 
 segregation.test(rcycl.ppp, nsim = 99) 
 #no spatial variation in recycled object type
@@ -251,18 +282,9 @@ segregation.test(rcycl.ppp, nsim = 99)
 #there is spatial segregation in weathering of recycled objects
 plot(density(split(rcycl.ppp)), useRaster = F)
 
-#weathering class without other weathering
-wdata = rcycl.data %>% filter(Wthrng_c != "other")
-wppp = as.ppp(wdata)
-marks(wppp) = wdata$Wthrng_c
-Window(wppp) = win
-plot(wppp)
-segregation.test(wppp, nsim=99)
-plot(density(split(wppp)), useRaster=F)
 
 #### Figure -- recycling types spatial ####
 sp.p2 = readOGR("data/artifact-shapefiles", "p2-artifacts")
-sp.p2 = sp.p2[sp.p2$Id_nm %in% p2$Id_number,]
 
 sp.p2@data = sp.p2@data %>%
   mutate(Recycling_type =
@@ -274,24 +296,44 @@ sp.p2@data = sp.p2@data %>%
 sp.p2@data$Recycling_type = factor(sp.p2@data$Recycling_type, 
                                    levels = c("double patina", "core on flake/blade", "core on hammerstone", "multiple", "other", "none"))
 
-sf.p2 = st_as_sf(sp.p2)
+sf.p2 = st_transform(st_as_sf(sp.p2), 32642)
 
-pal1 = c("double patina" = "#CC6677", 
-         "core on flake/blade" = "#DDCC77", 
-         "core on hammerstone" = "#117733", 
-         "multiple" = "#332288", 
-         "other" = "#AA4499", 
-         "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888")
+pal1 = c("double patina" = "#0072B2", 
+         "core on flake/blade" = "#D55E00", 
+         "core on hammerstone" = "#CC79A7", 
+         "multiple" = "#009E73", 
+         "other" = "#F0E442")
 
 plot.sf.p2 = sf.p2[!is.na(sf.p2$Recycling_type),]
 
+plot.dem = as(dem_crop, "SpatialPixelsDataFrame")
+dem.df = as.data.frame(plot.dem)
+colnames(dem.df) = c("value", "x", "y")
+
+plot.slope = as(sd_crop, "SpatialPixelsDataFrame")
+slope.df = as.data.frame(plot.slope)
+colnames(slope.df) = c("value", "x", "y")
+
 rt.spat.plot = ggplot() +
+  geom_tile(data = dem.df, aes(x = x, y = y, fill = value), alpha = 0.25) +
   geom_sf(data = plot.sf.p2[plot.sf.p2$Recycling_type == "none",], size = 0.25, alpha = 0.25) +
   geom_sf(data = plot.sf.p2[plot.sf.p2$Recycling_type != "none",], aes(color = Recycling_type), size = 1) +
-  #scale_color_colorblind() +
+  scale_fill_gradientn(colors = terrain.colors(10)) +
   scale_color_manual(values = pal1) +
-  labs(color = "Recycling signature")
-#ggsave(plot = rt.spat.plot, file = "~/Desktop/NYU/Dissertation-Research/papers/Coco_AK/figures/p1-recycling-signature-spatial.tiff")
+  labs(color = "recycling signature", fill = "elevation", x = "", y = "") +
+  theme(axis.text = element_blank())
+ggsave(plot = rt.spat.plot, filename = "figures/p2-recycling-signature-spatial_elev.tiff", dpi = 300)
 
 plot(rt.spat.plot)
+
+rt.spat.plot2 = ggplot() +
+  geom_tile(data = slope.df, aes(x = x, y = y, fill = value), alpha = 0.25) +
+  geom_sf(data = plot.sf.p2[plot.sf.p2$Recycling_type == "none",], size = 0.25, alpha = 0.25) +
+  geom_sf(data = plot.sf.p2[plot.sf.p2$Recycling_type != "none",], aes(color = Recycling_type), size = 1) +
+  scale_fill_gradientn(colors = cm.colors(10)) +
+  scale_color_manual(values = pal1) +
+  labs(color = "recycling signature", fill = "slope (degrees)", x = "", y = "") +
+  theme(axis.text = element_blank())
+plot(rt.spat.plot2)
+ggsave(plot = rt.spat.plot2, filename = "figures/p2-recycling-signature-spatial_slope.tiff", dpi = 300)
 
