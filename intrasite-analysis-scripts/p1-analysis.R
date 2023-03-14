@@ -55,6 +55,7 @@ plot(dem_im)
 cdf.test(ppp, dem_im)
 cdf.test(ppp, sp_im)
 cdf.test(ppp, sd_im)
+cdf.test(ppp, er_im)
 #location of points dependent on elevation and slope
 
 # ###### TODO####
@@ -176,7 +177,7 @@ dr = data.frame(
   auc = integer()
 )
 
-##### Dependence of recycling points intensity on elevation and slope #####
+##### Dependence of recycling points intensity on elevation, slope, erosion risk #####
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, dem_im, "DEM", "two-sided")
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, dem_im, "DEM", "one-sided: less")
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, dem_im, "DEM", "one-sided: greater")
@@ -186,6 +187,9 @@ dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sp_im, "slope percentage
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sd_im, "slope degrees", "two-sided")
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sd_im, "slope degrees", "one-sided: less")
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, sd_im, "slope degrees", "one-sided: greater")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, er_im, "erosion risk", "two-sided")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, er_im, "erosion risk", "one-sided: less")
+dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, er_im, "erosion risk", "one-sided: greater")
 
 ##### Dependence of recycling points intensity on underlying artifact density ####
 D = density(ppp, sigma=bw.diggle)
@@ -257,7 +261,7 @@ dr$covariate = factor(dr$covariate,
                         "tool density", "core density", 
                         "strongly weathered artifact density", "mildly weathered artifact density", "weakly weathered artifact density", 
                         "artifact length density", "artifact width density", "artifact thickness density", "artifact weight density", 
-                        "DEM", "slope percentage", "slope degrees"
+                        "DEM", "slope percentage", "slope degrees", "erosion risk"
                       ))
 
 dplot = ggplot(dr %>% filter(signif == TRUE) %>% filter(test != "two-sided")) +

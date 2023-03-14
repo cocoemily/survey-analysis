@@ -12,6 +12,7 @@ library(ggstatsplot)
 library(rcompanion)
 library(lme4)
 library(QuantPsyc)
+library(broom.mixed)
 
 set.seed(11122)
 
@@ -67,7 +68,7 @@ all_artifacts = rbind(
   p5 %>% select_at(cols), 
   s10a %>% select_at(cols), 
   s4 %>% select_at(cols)
-  )
+)
 
 
 #### DATA CLEANING ####
@@ -78,22 +79,24 @@ all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type,
 all_artifacts$Flake_termination = factor(all_artifacts$Flake_termination, 
                                          levels = c("feather", "hinge", "plunge", "step", "other"))
 all_artifacts$Flake_fragment = factor(all_artifacts$Flake_fragment , 
-                                         levels = c("proximal", "medial", "distal", "other"))
+                                      levels = c("proximal", "medial", "distal", "other"))
 
 all_artifacts$retouch.side = ifelse(str_detect(all_artifacts$Retouch_side, pattern = " "), "bifacial", all_artifacts$Retouch_side)
 all_artifacts$retouch.side = factor(all_artifacts$retouch.side, levels = c("dorsal", "ventral", "bifacial"))
 #all_artifacts$Retouch_side = factor(all_artifacts$Retouch_side, levels = c("dorsal", "ventral", "bifacial"))
 
 all_artifacts$tool.type = ifelse(str_detect(all_artifacts$Tool_type, "notch denticulate"), "notch/denticulate", 
-                        ifelse(str_detect(all_artifacts$Tool_type, " "), "multiple", 
-                               all_artifacts$Tool_type))
+                                 ifelse(str_detect(all_artifacts$Tool_type, " "), "multiple", 
+                                        all_artifacts$Tool_type))
 all_artifacts$tool.type = factor(all_artifacts$tool.type, levels = c("notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"))
 
 all_artifacts = all_artifacts %>%
   mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
          Length = ifelse(is.na(Flake_length), Maximum_core_length, Flake_length),
          Width = ifelse(is.na(Flake_width), Maximum_core_width, Flake_width)) %>%
-  filter(Length <= 200 & Width <= 200 & Thickness <= 200) #size of calipers
+  filter(is.na(Length) | Length <= 200) %>%
+  filter(is.na(Width) | Width <= 200) %>% 
+  filter(is.na(Thickness) |Thickness <= 200) #size of calipers
 
 all_artifacts = all_artifacts %>%
   mutate(flake.type = ifelse(is.na(Blank_form), Flake_type, Blank_form))
@@ -113,7 +116,7 @@ all_artifacts = all_artifacts %>%
                        ifelse(str_detect(Tool_type, " "), "multiple", 
                               Tool_type)), 
     Flake_type = ifelse(str_detect(Flake_type, pattern = "flake"), "flake", Flake_type)
-    )
+  )
 all_artifacts$Tool_type = factor(all_artifacts$Tool_type, levels = c("notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"))
 all_artifacts$Flake_type = factor(all_artifacts$Flake_type, levels = c("flake", "blade", "bladelet", "other"))
 
@@ -132,6 +135,27 @@ all_artifacts = subset(all_artifacts, !(Id_number %in% rolled.rcycl$Id_number))
 rm(list = c("artifacts", "artifacts1", "artifacts2", "collections", "paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18", "s10", "rolled.rcycl"))
 
 
+####recycling intensity values####
+all.p1 = nrow(all_artifacts %>% filter(location == "Semizbugu P1"))
+recycl.p1 = nrow(all_artifacts %>% filter(location == "Semizbugu P1") %>% filter(recycled == T))
+ri.p1 = recycl.p1/all.p1
+
+all.p2 = nrow(all_artifacts %>% filter(location == "Semizbugu P2"))
+recycl.p2 = nrow(all_artifacts %>% filter(location == "Semizbugu P2") %>% filter(recycled == T))
+ri.p2 = recycl.p2/all.p2
+
+all.p5 = nrow(all_artifacts %>% filter(location == "Semizbugu P5"))
+recycl.p5 = nrow(all_artifacts %>% filter(location == "Semizbugu P5") %>% filter(recycled == T))
+ri.p5 = recycl.p5/all.p5
+
+all.s4 = nrow(all_artifacts %>% filter(location == "Semizbugu 4"))
+recycl.s4 = nrow(all_artifacts %>% filter(location == "Semizbugu 4") %>% filter(recycled == T))
+ri.s4 = recycl.s4/all.s4
+
+all.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A"))
+recycl.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A") %>% filter(recycled == T))
+ri.s10a = recycl.s10a/all.s10a
+
 #### Differences by location ####
 ggplot(all_artifacts) +
   geom_bar(aes(recycled, fill = recycled)) +
@@ -139,7 +163,7 @@ ggplot(all_artifacts) +
   coord_flip() +
   scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
   theme(legend.position = "bottom")
-  
+
 
 rl.table = table(all_artifacts %>% dplyr::select(location,recycled))
 
@@ -158,14 +182,14 @@ at.r = as.data.frame(ftable(at.r.table))
 Table = xtabs(Freq ~ location + recycled + Artifact_type, data=at.r)
 at.r.df = as.data.frame(Table)
 at.r.cmh = groupwiseCMH(Table,
-             group   = 1,
-             fisher  = TRUE,
-             gtest   = FALSE,
-             chisq   = FALSE,
-             method  = "fdr",
-             correct = "none",
-             digits  = 3, 
-             simulate.p.value = T)
+                        group   = 1,
+                        fisher  = TRUE,
+                        gtest   = FALSE,
+                        chisq   = FALSE,
+                        method  = "fdr",
+                        correct = "none",
+                        digits  = 3, 
+                        simulate.p.value = T)
 at.r.df = at.r.df %>% left_join(at.r.cmh, by = c("location" = "Group"))
 # Hypotheses
 # •  Null hypothesis:  There is no association between the two inner variables.
@@ -177,12 +201,12 @@ at.r.df = at.r.df %>% group_by(location, Artifact_type) %>%
          percentage = Freq/loc.total, 
          Artifact_type = str_replace(Artifact_type, "_", " "))
 at.r.df$Artifact_type = factor(at.r.df$Artifact_type , 
-       levels = c("complete flake", "broken flake", "tool", "tool fragment", "core", "core fragment", "shatter"))
+                               levels = c("complete flake", "broken flake", "tool", "tool fragment", "core", "core fragment", "shatter"))
 #####recycling by artifact type ######
 at.r.plot = ggplot(at.r.df, aes(x = Artifact_type, y = Freq, fill = recycled)) +
   geom_bar(stat = "identity", width=0.9, position = "dodge") +
-  geom_text(data = at.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 2, hjust = -0.15) +
-  geom_text(aes(label = paste("P = ", adj.p), x = "core fragment", y = 450), size = 4, fontface = "italic", hjust = "right") +
+  geom_text(data = at.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 1.5, hjust = -0.1) +
+  geom_text(aes(label = paste("P = ", adj.p), x = "core fragment", y = 450), size = 3, fontface = "italic", hjust = "right", vjust = -0.1) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
   coord_flip() +
   scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
@@ -191,10 +215,12 @@ at.r.plot = ggplot(at.r.df, aes(x = Artifact_type, y = Freq, fill = recycled)) +
 ggsave(filename = "figures/artifact-type-recycling.tiff", at.r.plot, 
        dpi = 300, width = 7, height = 8)
 
-##error where model is nearly unidentifiable -- likely due to low numbers of certain artifact types
+all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type, 
+                                     levels = c(
+                                       "shatter", "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment"
+                                     ))
 rafit = glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = all_artifacts)
 summary(rafit)
-
 
 wc.table = table(all_artifacts %>% dplyr::select(location, Weathering_class) %>%
                    filter(!is.na(Weathering_class)))
@@ -228,12 +254,12 @@ wc.r.df = wc.r.df %>% group_by(location, Weathering_class) %>%
          percentage = Freq/loc.total, 
          Weathering_class = str_replace(Weathering_class, "_", " "))
 wc.r.df$Weathering_class = factor(wc.r.df$Weathering_class , 
-                               levels = c("strongly weathered", "mildly weathered", "weakly weathered", "not weathered", "other"))
+                                  levels = c("strongly weathered", "mildly weathered", "weakly weathered", "not weathered", "other"))
 #####recycling by weathering class ######
 wc.r.plot = ggplot(wc.r.df, aes(x = Weathering_class, y = Freq, fill = recycled)) +
   geom_bar(stat = "identity", width=0.9, position = "dodge") +
-  geom_text(data = wc.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 2, hjust = -0.15) +
-  geom_text(aes(label = paste("P = ", adj.p), x = "not weathered", y = 500), size = 4, fontface = "italic", hjust = "right") +
+  geom_text(data = wc.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 1.5, hjust = -0.1) +
+  geom_text(aes(label = paste("P = ", adj.p), x = "not weathered", y = 500), size = 3, fontface = "italic", hjust = "right", vjust = -1.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
   coord_flip() +
   scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
@@ -242,10 +268,38 @@ wc.r.plot = ggplot(wc.r.df, aes(x = Weathering_class, y = Freq, fill = recycled)
 ggsave(filename = "figures/weathering-class-recycling.tiff", wc.r.plot, 
        dpi = 300, width = 7, height = 8)
 
+wc.r.plot2 = ggplot(wc.r.df, aes(x = Weathering_class, y = Freq, fill = recycled)) +
+  geom_bar(stat = "identity", width=0.9, position = "dodge") +
+  geom_text(data = wc.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 3, hjust = -0.1) +
+  geom_text(aes(label = paste("P = ", adj.p), x = "other", y = 500), size = 4.5, fontface = "italic", hjust = "right", vjust = -1.5) +
+  facet_wrap(~location, nrow = 1, strip.position = "top") +
+  coord_flip() +
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
+  theme(strip.text = element_text(size = 9, face = "bold"), axis.text = element_text(size = 8)) +
+  labs(x = "weathering class", y = "count", fill = "recycled?")
+plot(wc.r.plot2)
+ggsave(filename = "figures/SAA_weathering-class-recycling.tiff", wc.r.plot2, 
+       dpi = 300, width = 13, height = 6)
+
 wreg = all_artifacts
 wreg$Weathering_class = factor(wreg$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 rwfit = glmer(recycled ~ Weathering_class + (1 | location), family = binomial(), data = wreg)
-summary(rwfit)
+rw.df = tidy(rwfit)
+
+rw.df$term_clean = c("(intercept)", "strongly weathered", "mildly weathered", "weakly weathered", "other", "")
+rw.df$term_clean = factor(rw.df$term_clean, levels = c("(intercept)", "strongly weathered", "mildly weathered", "weakly weathered", "other", ""))
+rw.df$lower = rw.df$estimate - rw.df$std.error
+rw.df$upper = rw.df$estimate + rw.df$std.error
+
+lmerrw = ggplot(rw.df %>% filter(effect == "fixed")) +
+  geom_hline(aes(yintercept = 0), color = "red", linetype = "dashed") +
+  geom_point(aes(x = term_clean,  y = estimate), size = 6, color = "blue") +
+  geom_linerange(aes(x = term_clean,  y = estimate, ymin = lower, ymax = upper), color = "blue") +
+  coord_flip() +
+  labs(x = "term")
+ggsave(filename = "figures/SAA_weathering-class-recycling_lmer.tiff", lmerrw , 
+       dpi = 300, width = 6, height = 5)
+
 
 # pairwiseNominalIndependence(
 #   table(all_artifacts %>% dplyr::select(location, Retouch)),
@@ -305,14 +359,14 @@ Table = xtabs(Freq ~ location + recycled + tool.type,
               data=tt.r)
 tt.r.df = as.data.frame(Table)
 tt.r.cmh = groupwiseCMH(Table,
-             group   = 1,
-             fisher  = TRUE,
-             gtest   = FALSE,
-             chisq   = FALSE,
-             method  = "fdr",
-             correct = "none",
-             digits  = 3, 
-             simulate.p.value = T)
+                        group   = 1,
+                        fisher  = TRUE,
+                        gtest   = FALSE,
+                        chisq   = FALSE,
+                        method  = "fdr",
+                        correct = "none",
+                        digits  = 3, 
+                        simulate.p.value = T)
 tt.r.df = tt.r.df %>% left_join(tt.r.cmh, by = c("location" = "Group"))
 # Hypotheses
 # •  Null hypothesis:  There is no association between the two inner variables.
@@ -322,13 +376,13 @@ tt.r.df = tt.r.df %>% group_by(location, tool.type) %>%
   mutate(loc.total = sum(Freq), 
          percentage = Freq/loc.total)
 tt.r.df$tool.type = factor(tt.r.df$tool.type , 
-                               levels = rev(c("scraper", "notch", "denticulate", "notch/denticulate", 
-                                              "biface", "point", "multiple", "other")))
+                           levels = rev(c("scraper", "notch", "denticulate", "notch/denticulate", 
+                                          "biface", "point", "multiple", "other")))
 #####recycling by tool type ######
 tt.r.plot = ggplot(tt.r.df, aes(x = tool.type, y = Freq, fill = recycled)) +
   geom_bar(stat = "identity", width=0.9, position = "dodge") +
-  geom_text(data = tt.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 2, hjust = -0.15) +
-  geom_text(aes(label = paste("P = ", adj.p), y = 175, x = "denticulate"), size = 4, fontface = "italic", hjust = "right") +
+  geom_text(data = tt.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 1.5, hjust = -0.1) +
+  geom_text(aes(label = paste("P = ", adj.p), y = 175, x = "notch"), size = 3, fontface = "italic", hjust = "right") +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
   coord_flip() +
   scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
@@ -339,7 +393,7 @@ ggsave(filename = "figures/tool-type-recycling.tiff", tt.r.plot,
 
 rtfit = glmer(recycled ~ tool.type + (1 | location), family = binomial(), data = all_artifacts %>% filter(!is.na(tool.type)))
 summary(rtfit)
-unique(all_artifacts$tool.type)
+levels(all_artifacts$tool.type)
 
 p5fit = glm(recycled ~ tool.type, family = binomial(), data = all_artifacts %>% filter(!is.na(tool.type)) %>% filter(location == "Semizbugu P5"))
 summary(p5fit)
@@ -364,12 +418,17 @@ summary(s4fit)
 #   fisher = T, chisq = F, gtest = F
 # )
 
+mfig1 = ggarrange(at.r.plot, tt.r.plot, wc.r.plot, nrow = 1, common.legend = T, legend = "bottom", labels = "AUTO")
+ggsave(filename = "figures/cat-data-comparison-by-site.tiff", mfig1, 
+       dpi = 300, width = 12, height = 8)
+
+
 #####recycling by weight #####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Weight))
 #statistically significant interaction between location and recycling on weight
 pwt = all_artifacts %>% filter(Weight <= 1000) %>% group_by(location) %>%
   pairwise_wilcox_test(Weight ~ recycled, p.adjust.method = "bonferroni")
-w.r.plot = ggplot(all_artifacts %>% filter(Weight <= 1000)) +
+we.r.plot = ggplot(all_artifacts %>% filter(Weight <= 1000)) +
   geom_density(aes(Weight, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
   scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
@@ -377,7 +436,7 @@ w.r.plot = ggplot(all_artifacts %>% filter(Weight <= 1000)) +
   geom_text(data = pwt, aes(label = p.adj.signif, x = 900, y = 0.025), fontface = "italic", hjust = "right") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
   labs(x = "weight", y = "density", fill = "recycled?", color = "recycled?")
-ggsave(filename = "figures/weight-recycling.tiff", w.r.plot, 
+ggsave(filename = "figures/weight-recycling.tiff", we.r.plot, 
        dpi = 300, width = 7, height = 8)
 
 #####recycling by length #####
@@ -410,6 +469,7 @@ wd.r.plot = ggplot(all_artifacts) +
 ggsave(filename = "figures/width-recycling.tiff", wd.r.plot, 
        dpi = 300, width = 7, height = 8)
 
+
 #####recycling by thickness #####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Thickness))
 ptt = all_artifacts  %>% group_by(location) %>%
@@ -424,6 +484,13 @@ t.r.plot = ggplot(all_artifacts) +
   labs(x = "thickness", y = "density", fill = "recycled?", color = "recycled?")
 ggsave(filename = "figures/thickness-recycling.tiff", t.r.plot, 
        dpi = 300, width = 7, height = 8)
+
+mfig2 = ggarrange(l.r.plot, wd.r.plot, t.r.plot, we.r.plot, 
+                  nrow = 1,
+                  common.legend = T, legend = "bottom", labels = "AUTO")
+ggsave(filename = "figures/cont-data-comparison-by-site1.tiff", mfig2, 
+       dpi = 300, width = 13, height = 7)
+
 
 #####recycling by cortex percentages#####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Cortex_percentage))
@@ -458,12 +525,19 @@ df.r.plot = ggplot(all_artifacts) +
 ggsave(filename = "figures/flake-scar-count-recycling.tiff", df.r.plot, 
        dpi = 300, width = 7, height = 8)
 
+mfig3 = ggarrange(cr.r.plot, df.r.plot, 
+                  nrow = 1,
+                  common.legend = T, legend = "bottom", labels = "AUTO")
+ggsave(filename = "figures/cont-data-comparison-by-site2.tiff", mfig3, 
+       dpi = 300, width = 7, height = 7)
+
+
 #### Regressions between locations ####
 ##does location explain more variation than other variables?
 reg.data = all_artifacts %>% dplyr::select("recycled","Weathering_class", 
-                                    "Dorsal_flake_scar_count", "Cortex_percentage",
-                                    "Thickness", "Length", "Width", 
-                                    "Weight")
+                                           "Dorsal_flake_scar_count", "Cortex_percentage",
+                                           "Thickness", "Length", "Width", 
+                                           "Weight")
 reg.data$recycled = as.factor(reg.data$recycled)
 reg.data$Weathering_class = factor(reg.data$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 
@@ -471,9 +545,9 @@ fit1 = glm(recycled ~ ., family = binomial(), data = reg.data)
 summary(fit1)
 
 reg.data2 = all_artifacts %>% dplyr::select("location", "recycled", "Weathering_class", 
-                                     "Dorsal_flake_scar_count", "Cortex_percentage",
-                                     "Thickness", "Length", "Width", 
-                                     "Weight")
+                                            "Dorsal_flake_scar_count", "Cortex_percentage",
+                                            "Thickness", "Length", "Width", 
+                                            "Weight")
 fit2 = glm(recycled ~ ., family = binomial(), data = reg.data2)
 summary(fit2)
 
@@ -501,11 +575,11 @@ scoef$var = factor(scoef$var,
                    ))
 scoef$var = fct_rev(scoef$var)
 sc.labs = rev(c("location: Semizbugu 4", "location: Semizbugu P1", "location: Semizbugu P2", "location: Semizbugu P5", 
-               "weathering class: mild", "weathering class: weak", "weathering class: not", "weathering class: other",
-               "dorsal flake scar count", "cortex percentage", 
-               "length", "width", "thickness", "weight"))
+                "weathering class: mild", "weathering class: weak", "weathering class: not", "weathering class: other",
+                "dorsal flake scar count", "cortex percentage", 
+                "length", "width", "thickness", "weight"))
 
-sc.plot = ggplot(scoef) +
+sc.plot = ggplot(scoef %>% filter(!is.na(var))) +
   geom_hline(yintercept = 0, color = I("red")) +
   geom_hline(yintercept = min((scoef %>% filter(str_detect(var, "location")))$abs_coef), color = I("grey"), linetype = "dashed") +
   geom_point(aes(x = var, y = abs_coef, color = var, shape = signf), size = 5)+
@@ -516,15 +590,21 @@ sc.plot = ggplot(scoef) +
   scale_x_discrete(labels = sc.labs) +
   scale_shape_manual(values = c(4, 16))
 plot(sc.plot)
-ggsave(filename = "figures/stand-coefs-continuous-vars.tiff", dpi = 300)
+ggsave(filename = "figures/stand-coefs-continuous-vars.tiff", sc.plot,
+       dpi = 300, width = 8, height = 5)
 
 
 #####multiple regressions for each of the locations #####
 reg.data.p1 = all_artifacts %>% filter(location == "Semizbugu P1") %>%
-  dplyr::select("recycled", "Weathering_class", "Artifact_type",
-         "Dorsal_flake_scar_count", "Cortex_percentage",
-         "Length", "Width", "Thickness", 
-         "Weight")
+  dplyr::select("recycled", "Weathering_class", "Artifact_type", "Tool_type", "Cortex_percentage",
+                "Length", "Width", "Thickness", 
+                "Weight")
+reg.data.p1$Tool_type = as.character(reg.data.p1$Tool_type)
+reg.data.p1$Tool_type = ifelse(is.na(reg.data.p1$Tool_type), "not_tool", reg.data.p1$Tool_type)
+reg.data.p1$Tool_type = factor(reg.data.p1$Tool_type, levels = c(
+  "not_tool", "notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"
+))
+
 reg.data.p1$Weathering_class = factor(reg.data.p1$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 reg.data.p1$Artifact_type = factor(reg.data.p1$Artifact_type, levels = c("shatter", "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment"))
 
@@ -536,10 +616,14 @@ p1.df$signf = ifelse(p1.df$p.value < 0.05, "signf", "not signf")
 
 
 reg.data.p2 = all_artifacts %>% filter(location == "Semizbugu P2") %>%
-  dplyr::select("recycled", "Weathering_class", "Artifact_type",
-         "Dorsal_flake_scar_count", "Cortex_percentage",
-         "Length", "Width", "Thickness", 
-         "Weight")
+  dplyr::select("recycled", "Weathering_class", "Artifact_type", "Tool_type", "Cortex_percentage",
+                "Length", "Width", "Thickness", 
+                "Weight")
+reg.data.p2$Tool_type = as.character(reg.data.p2$Tool_type)
+reg.data.p2$Tool_type = ifelse(is.na(reg.data.p2$Tool_type), "not_tool", reg.data.p2$Tool_type)
+reg.data.p2$Tool_type = factor(reg.data.p2$Tool_type, levels = c(
+  "not_tool", "notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"
+))
 reg.data.p2$Weathering_class = factor(reg.data.p2$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 reg.data.p2$Artifact_type = factor(reg.data.p2$Artifact_type, levels = c("shatter", "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment"))
 
@@ -551,10 +635,14 @@ p2.df$signf = ifelse(p2.df$p.value < 0.05, "signf", "not signf")
 
 
 reg.data.p5 = all_artifacts %>% filter(location == "Semizbugu P5") %>%
-  dplyr::select("recycled", "Weathering_class", "Artifact_type",
-                "Dorsal_flake_scar_count", "Cortex_percentage",
+  dplyr::select("recycled", "Weathering_class", "Artifact_type", "Tool_type", "Cortex_percentage",
                 "Length", "Width", "Thickness", 
                 "Weight")
+reg.data.p5$Tool_type = as.character(reg.data.p5$Tool_type)
+reg.data.p5$Tool_type = ifelse(is.na(reg.data.p5$Tool_type), "not_tool", reg.data.p5$Tool_type)
+reg.data.p5$Tool_type = factor(reg.data.p5$Tool_type, levels = c(
+  "not_tool", "notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"
+))
 reg.data.p5$Weathering_class = factor(reg.data.p5$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 reg.data.p5$Artifact_type = factor(reg.data.p5$Artifact_type, levels = c("shatter", "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment"))
 
@@ -566,10 +654,14 @@ p5.df$signf = ifelse(p5.df$p.value < 0.05, "signf", "not signf")
 
 
 reg.data.s10a = all_artifacts %>% filter(location == "Semizbugu 10A") %>%
-  dplyr::select("recycled", "Weathering_class", "Artifact_type",
-                "Dorsal_flake_scar_count", "Cortex_percentage",
+  dplyr::select("recycled", "Weathering_class", "Artifact_type", "Tool_type", "Cortex_percentage",
                 "Length", "Width", "Thickness", 
                 "Weight")
+reg.data.s10a$Tool_type = as.character(reg.data.s10a$Tool_type)
+reg.data.s10a$Tool_type = ifelse(is.na(reg.data.s10a$Tool_type), "not_tool", reg.data.s10a$Tool_type)
+reg.data.s10a$Tool_type = factor(reg.data.s10a$Tool_type, levels = c(
+  "not_tool", "notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"
+))
 reg.data.s10a$Weathering_class = factor(reg.data.s10a$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 reg.data.s10a$Artifact_type = factor(reg.data.s10a$Artifact_type, levels = c("shatter", "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment"))
 
@@ -581,10 +673,14 @@ s10a.df$signf = ifelse(s10a.df$p.value < 0.05, "signf", "not signf")
 
 
 reg.data.s4 = all_artifacts %>% filter(location == "Semizbugu 4") %>%
-  dplyr::select("recycled", "Weathering_class", "Artifact_type",
-                "Dorsal_flake_scar_count", "Cortex_percentage",
+  dplyr::select("recycled", "Weathering_class", "Artifact_type", "Tool_type", "Cortex_percentage",
                 "Length", "Width", "Thickness", 
                 "Weight")
+reg.data.s4$Tool_type = as.character(reg.data.s4$Tool_type)
+reg.data.s4$Tool_type = ifelse(is.na(reg.data.s4$Tool_type), "not_tool", reg.data.s4$Tool_type)
+reg.data.s4$Tool_type = factor(reg.data.s4$Tool_type, levels = c(
+  "not_tool", "notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"
+))
 reg.data.s4$Weathering_class = factor(reg.data.s4$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 reg.data.s4$Artifact_type = factor(reg.data.s4$Artifact_type, levels = c("shatter", "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment"))
 
@@ -600,12 +696,24 @@ allregs = rbind(p1.df, p2.df, p5.df, s10a.df, s4.df)
 allregs$lower = allregs$estimate - allregs$std.error
 allregs$upper = allregs$estimate + allregs$std.error
 
+allregs$term = factor(allregs$term, levels = 
+                        c( "(Intercept)",
+                           "Artifact_typecomplete_flake", "Artifact_typebroken_flake", "Artifact_typetool", "Artifact_typetool_fragment", "Artifact_typecore", "Artifact_typecore_fragment",
+                           "Tool_typenotch", "Tool_typedenticulate", "Tool_typenotch/denticulate", "Tool_typescraper", "Tool_typepoint", "Tool_typebiface", "Tool_typemultiple", "Tool_typeother",
+                           "Weathering_classstrongly_weathered", "Weathering_classmildly_weathered", "Weathering_classweakly_weathered", "Weathering_classother",
+                           "Cortex_percentage", 
+                           "Length", "Width", "Thickness", "Weight"
+                        ))
+
 regsp = ggplot(data = allregs %>% filter(signf == "signf")) +
   geom_hline(yintercept = 0, color = I("red")) +
-  geom_linerange(aes(x=term, ymin = lower, ymax = upper, group = location, color = location), position = position_dodge2(width = 0.5)) +
-  geom_point(aes(x=term, y = estimate, group = location, color = location), position = position_dodge2(width = 0.5), size = 2) +
+  geom_linerange(aes(x=term, ymin = lower, ymax = upper, group = location, color = location), position = position_dodge2(width = 0.75)) +
+  geom_point(aes(x=term, y = estimate, group = location, color = location), position = position_dodge2(width = 0.75), size = 4) +
   coord_flip() +
-  scale_color_colorblind() #+
-  #scale_shape_manual(values = c(0:2,5)) #+
-  #scale_x_discrete(labels = rev(c("width", "weathering class: weak", "length", "cortex percentage", "(intercept)")))
-ggsave(filename= "figures/regression-results-by-location.tiff", regsp, dpi = 300)
+  scale_color_colorblind() +
+  scale_x_discrete(labels = rev(c("weight", "thickness", "cortex percentage", "weathering class: other", "weathering class: weak", "weathering class: mild", "weathering class: strong", "tool type: multiple", "tool type: biface", "tool type: scraper", "artifact type: tool")))
+plot(regsp)
+ggsave(filename= "figures/regression-results-by-location.tiff", regsp, 
+       dpi = 300, width = 8, height = 5)
+
+
