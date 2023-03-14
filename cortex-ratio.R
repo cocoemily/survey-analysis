@@ -1,8 +1,8 @@
-#Cortex Ratio calculation script for paleocore-sss collection forms
 ## units are millimeters (length, width, thickness) and grams (weight)
 
 library(tidyverse)
 
+#### DATA LOADING ####
 artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
 artifacts2 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/cleaned_july_artifacts.csv")
 
@@ -35,19 +35,80 @@ p5 = artifacts %>% filter(location == "Semizbugu P5")
 s10a = collections %>% filter(location == 'Semizbugu 10A')
 s4 = collections %>% filter(location == "Semizbugu 4")
 
+cols = c("Id_number", "location", "recycled", "double_patina", "Raw_material_description", 
+         "Weathering_class", "Artifact_type", "Bordian_type", "Tool_type", "Flake_type", "Blank_form",
+         "Dorsal_flake_scar_count", "Cortex_percentage", "Flake_fragment", "Flake_termination",
+         "Retouch", "Retouch_side", "Edge_damage",
+         "Platform_thickness", "Platform_width",
+         "Flake_thickness", "Flake_length", "Flake_width", 
+         "Maximum_core_length", "Maximum_core_width", "Maximum_core_thickness", 
+         "Weight")
 
 all_artifacts = rbind(
-  p1 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description), 
-  p2 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight,Cortex_percentage, Cortex_description), 
-  p5 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description), 
-  s10a %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description), 
-  s4 %>% select(Id_number, location, recycled, Raw_material_description, Weathering_class, Artifact_type, Flake_thickness, Flake_length, Flake_width, Maximum_core_length, Maximum_core_width, Maximum_core_thickness, Weight, Cortex_percentage, Cortex_description)
+  p1 %>% select_at(cols), 
+  p2 %>% select_at(cols), 
+  p5 %>% select_at(cols), 
+  s10a %>% select_at(cols), 
+  s4 %>% select_at(cols)
 )
-cr.artifacts = artifacts %>% filter(!is.na(Cortex_percentage))
 
+
+#### DATA CLEANING ####
+all_artifacts$Weathering_class = factor(all_artifacts$Weathering_class, 
+                                        levels = c("strongly_weathered", "mildly_weathered", "weakly_weathered", "not_weathered", "other"))
+all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type, 
+                                     levels = c("complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment", "shatter"))
+all_artifacts$Flake_termination = factor(all_artifacts$Flake_termination, 
+                                         levels = c("feather", "hinge", "plunge", "step", "other"))
+all_artifacts$Flake_fragment = factor(all_artifacts$Flake_fragment , 
+                                      levels = c("proximal", "medial", "distal", "other"))
+
+all_artifacts$retouch.side = ifelse(str_detect(all_artifacts$Retouch_side, pattern = " "), "bifacial", all_artifacts$Retouch_side)
+all_artifacts$retouch.side = factor(all_artifacts$retouch.side, levels = c("dorsal", "ventral", "bifacial"))
+#all_artifacts$Retouch_side = factor(all_artifacts$Retouch_side, levels = c("dorsal", "ventral", "bifacial"))
+
+all_artifacts$tool.type = ifelse(str_detect(all_artifacts$Tool_type, "notch denticulate"), "notch/denticulate", 
+                                 ifelse(str_detect(all_artifacts$Tool_type, " "), "multiple", 
+                                        all_artifacts$Tool_type))
+all_artifacts$tool.type = factor(all_artifacts$tool.type, levels = c("notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"))
+
+all_artifacts = all_artifacts %>%
+  mutate(Thickness = ifelse(is.na(Flake_thickness), Maximum_core_thickness, Flake_thickness),
+         Length = ifelse(is.na(Flake_length), Maximum_core_length, Flake_length),
+         Width = ifelse(is.na(Flake_width), Maximum_core_width, Flake_width)) %>%
+  filter(is.na(Length) | Length <= 200) %>%
+  filter(is.na(Width) | Width <= 200) %>% 
+  filter(is.na(Thickness) |Thickness <= 200) #size of calipers
+
+all_artifacts = all_artifacts %>%
+  mutate(flake.type = ifelse(is.na(Blank_form), Flake_type, Blank_form))
+
+source("bordian_types_dictionary.R")
+all_artifacts$Bordian_name = ""
+for(i in 1:nrow(all_artifacts)) {
+  if(!is.na(all_artifacts$Bordian_type[i])) {
+    all_artifacts$Bordian_name[i] = bordian_types[all_artifacts$Bordian_type[i]]
+  }
+}
+all_artifacts$Bordian_name = factor(all_artifacts$Bordian_name, levels = bordian_levels)
+
+all_artifacts = all_artifacts %>%
+  mutate(
+    Tool_type = ifelse(str_detect(Tool_type, "notch denticulate"), "notch/denticulate", 
+                       ifelse(str_detect(Tool_type, " "), "multiple", 
+                              Tool_type)), 
+    Flake_type = ifelse(str_detect(Flake_type, pattern = "flake"), "flake", Flake_type)
+  )
+all_artifacts$Tool_type = factor(all_artifacts$Tool_type, levels = c("notch", "denticulate", "notch/denticulate", "scraper", "point", "biface", "multiple", "other"))
+all_artifacts$Flake_type = factor(all_artifacts$Flake_type, levels = c("flake", "blade", "bladelet", "other"))
+
+
+####CORTEX CLEANING####
+cr.artifacts = all_artifacts %>% filter(!is.na(Cortex_percentage))
 raw.mat = unique(tolower(cr.artifacts$Raw_material_description))
 
-#calculations without core thickness measurement
+
+####Cortex Ratio calculations####
 calculate_cortex_ratio = function(data) {
   flakes = data %>% filter(str_detect(Artifact_type, "flake"))
   cores = data %>% filter(str_detect(Artifact_type, "core"))
@@ -65,6 +126,7 @@ calculate_cortex_ratio = function(data) {
   tools = tools %>% filter(!is.na(cortex.area))
   
   ## Biface surface area and cortex area calculation (mm2)
+  #surface area of scalene ellipsoid
   bifaces$surface.area = (
     4*pi*(((((bifaces$Flake_length/2) ^ 1.6075)*((bifaces$Flake_width/2) ^1.6075)+
               ((bifaces$Flake_length/2) ^1.6075)*((bifaces$Flake_thickness/2) ^1.6075)+
@@ -74,12 +136,22 @@ calculate_cortex_ratio = function(data) {
   bifaces = bifaces %>% filter(!is.na(cortex.area))
   
   ## Core surface area and cortex area calculation (mm2)
-  #cores$alpha = acos((pmin(cores$Maximum_core_length, cores$Maximum_core_width)/pmax(cores$Maximum_core_length, cores$Maximum_core_width)))
-  cores$surface.area = (
-    4*pi*(((((cores$Maximum_core_length/2) ^ 1.6075)*((cores$Maximum_core_width/2) ^1.6075)+
-              ((cores$Maximum_core_length/2) ^1.6075)*((cores$Maximum_core_thickness/2) ^1.6075)+
-              ((cores$Maximum_core_width/2)^1.6075)*((cores$Maximum_core_thickness/2)^1.6075))/3)^(1/1.6075))
-  )
+  #surface area of scalene ellipsoid
+  if(all(!is.na(cores$Maximum_core_thickness)) == TRUE){
+    cores$surface.area = (
+      4*pi*(((((cores$Maximum_core_length/2) ^ 1.6075)*((cores$Maximum_core_width/2) ^1.6075)+
+                ((cores$Maximum_core_length/2) ^1.6075)*((cores$Maximum_core_thickness/2) ^1.6075)+
+                ((cores$Maximum_core_width/2)^1.6075)*((cores$Maximum_core_thickness/2)^1.6075))/3)^(1/1.6075))
+    )
+  } else {
+    cores$max = pmax(cores$Maximum_core_length, cores$Maximum_core_width)
+    cores$surface.area = (
+      4*pi*(((((cores$Maximum_core_length/2) ^ 1.6075)*((cores$Maximum_core_width/2) ^1.6075)+
+                ((cores$Maximum_core_length/2) ^1.6075)*((cores$max/2) ^1.6075)+
+                ((cores$Maximum_core_width/2)^1.6075)*((cores$max/2)^1.6075))/3)^(1/1.6075))
+    )
+  }
+  
   cores$cortex.area = cores$surface.area*(cores$Cortex_percentage/100.0)
   cores = cores %>% filter(!is.na(cortex.area))
   
@@ -98,12 +170,21 @@ calculate_cortex_ratio = function(data) {
   
   ## Nodule volume calculation
   core.count  = cores %>% group_by(Raw_material_description) %>% 
-    summarize(count = n())
-  nodule.count = sum(core.count$count)#need to think about how this is being calculated
+    summarize(count = n(), 
+              average.length = mean(Maximum_core_length), 
+              average.width = mean(Maximum_core_width), 
+              average.thick = mean(Maximum_core_thickness), 
+              vol = average.length * average.width * average.thick, 
+              total.vol = count * vol)
+  est.cob.vol = sum(core.count$total.vol)
+  #nodule.count = assemblage.volume/est.cob.vol
+  nodule.count = sum(core.count$count)
   nodule.volume = assemblage.volume/nodule.count
   
+  
   ## Theoretical surface area calculations
-  theor.sa = (4*pi*((3*nodule.volume)/(4*pi))^(2/3)) #check to see what model for nodule volume 
+  #theor.sa = (4*pi*((3*nodule.volume)/(4*pi))^(2/3)) # check to see what model for nodule volume 
+  theor.sa = 6*(nodule.volume^(2/3))
   te.cortical.sa = theor.sa*nodule.count
   
   ## Cortex ratio calculation
@@ -113,8 +194,15 @@ calculate_cortex_ratio = function(data) {
   
 }
 
-calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu P1"))
-calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu P2"))
-calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu P5"))
-#calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu 10A"))
-#calculate_cortex_ratio(cr.artifacts %>% filter(location == "Semizbugu 4"))
+calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P1"))
+calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P2"))
+calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P5"))
+calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 10A"))
+calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 4"))
+
+var(x = c(
+  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P1")),
+  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P2")), 
+  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P5")), 
+  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 4"))
+))
