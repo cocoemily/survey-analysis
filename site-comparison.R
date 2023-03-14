@@ -156,6 +156,39 @@ all.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A"))
 recycl.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A") %>% filter(recycled == T))
 ri.s10a = recycl.s10a/all.s10a
 
+####recycling intensity correlations####
+ri.cor = data.frame(
+  location = unique(all_artifacts$location),
+  ri = c(ri.p1, ri.p2, ri.p5, ri.s10a, ri.s4),
+  r.count = c(recycl.p1, recycl.p2, recycl.p5, recycl.s10a, recycl.s4),
+  count = c(all.p1, all.p2, all.p5, all.s10a, all.s4), 
+  cr = c(0.54, 0.65, 0.45, 0.46, 0.50)
+)
+
+cplot1 = ggplot(ri.cor) +
+  #geom_abline(intercept = 0, slope = 1) +
+  geom_point(aes(x = count, y = ri, color = location)) +
+  geom_smooth(aes(x = count, y = ri), method = "lm", se = T) +
+  scale_color_tableau() +
+  labs(x = "artifact count", y = "recycling intensity") +
+  scale_y_continuous(breaks = c(0, 0.25, 0.50, 0.75))
+plot(cplot1)
+
+cplot2 = ggplot(ri.cor) +
+  #geom_abline(intercept = 0, slope = 1) +
+  geom_point(aes(x = cr, y = ri, color = location)) +
+  geom_smooth(aes(x = cr, y = ri), method = "lm", se = T) +
+  scale_color_tableau() +
+  labs(x = "cortex ratio", y = "recycling intensity") +
+  scale_y_continuous(breaks = c(0, 0.25, 0.50, 0.75))
+plot(cplot2)
+
+ggsave(
+  filename = "figures/recycling-intensity-correlations.tiff",
+  ggarrange(cplot1, cplot2, ncol = 2, nrow = 1, common.legend = T, labels = "AUTO", legend = "bottom"), 
+  dpi = 300, width = 8, height = 4
+)
+
 #### Differences by location ####
 ggplot(all_artifacts) +
   geom_bar(aes(recycled, fill = recycled)) +
