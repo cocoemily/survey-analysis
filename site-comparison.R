@@ -21,10 +21,10 @@ source("site-comparison-functions.R")
 theme_set(theme_bw())
 
 #### DATA LOADING ####
-artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
-artifacts2 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/cleaned_july_artifacts.csv")
+artifacts1 = read_csv("data/cleaned_june_artifacts.csv")
+artifacts2 = read_csv("data/cleaned_july_artifacts.csv")
 
-paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 <- read_delim("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/paleocore-sss_artifact-form_-_all_versions_-_False_-_2022-08-01-05-36-18.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 <- read_delim("data/paleocore-sss_artifact-form_-_all_versions_-_False_-_2022-08-01-05-36-18.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 s10 = paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 %>% filter(Site_name == "Semizbugu 10A")
 s4 = paleocore_sss_artifact_form_all_versions_False_2022_08_01_05_36_18 %>% filter(Site_name == "Semizbugu 4")
@@ -432,6 +432,12 @@ p5fit = glm(recycled ~ tool.type, family = binomial(), data = all_artifacts %>% 
 summary(p5fit)
 s4fit = glm(recycled ~ tool.type, family = binomial(), data = all_artifacts %>% filter(!is.na(tool.type)) %>% filter(location == "Semizbugu 4"))
 summary(s4fit)
+
+######p5 scrapers#####
+p5.scrapers = all_artifacts %>% filter(location == "Semizbugu P5") %>%
+  filter(tool.type == "scraper")
+table(p5.scrapers$Weathering_class)
+
 
 # pairwiseNominalIndependence(
 #   table(all_artifacts %>% dplyr::select(location, flake.type)),

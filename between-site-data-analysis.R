@@ -11,13 +11,8 @@ library(sf)
 
 theme_set(theme_bw())
 
-# data = read_delim("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/paleocore-sss_aggregate-form_-_all_versions_-_False_-_2022-08-01-05-35-34.csv", 
-#                   delim = ";", escape_double = FALSE, trim_ws = TRUE)
-# 
-# write_csv(data, file = "../July-survey/between-site-points.csv")
-
-data = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/between-site-points.csv")
-reach_view_points <- read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/reach-view-points.csv")
+data = read_csv("data/between-site-points.csv")
+reach_view_points <- read_csv("data/reach-view-points.csv")
 
 aggs = data %>% left_join(reach_view_points, by = c("reach-view-num" = "Name"))
 

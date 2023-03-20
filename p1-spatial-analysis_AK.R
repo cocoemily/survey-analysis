@@ -34,8 +34,8 @@ source("bordian_types_dictionary.R")
 
 theme_set(theme_bw())
 
-artifacts1 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/June-survey/cleaned_june_artifacts.csv")
-artifacts2 = read_csv("~/Desktop/NYU/Dissertation-Research/Survey/July-survey/cleaned_july_artifacts.csv")
+artifacts1 = read_csv("data/cleaned_june_artifacts.csv")
+artifacts2 = read_csv("data/cleaned_july_artifacts.csv")
 artifacts = rbind(artifacts1, artifacts2)
 artifacts = artifacts %>% mutate(location = ifelse(Site_name %in% c("Square 1", "Square 2", "Square 3"), "Semizbugu P1", 
                                                    ifelse(Site_name %in% c("Square 4", "Square 5"), "Semizbugu P2", "Semizbugu P5")))
