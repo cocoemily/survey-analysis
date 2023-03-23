@@ -37,3 +37,7 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+
+# data files to not share
+data/Experimental_chert_platform_flakes.csv

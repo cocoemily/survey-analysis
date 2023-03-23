@@ -1,4 +1,6 @@
 library(tidyverse)
+library(ggpubr)
+library(ggthemes)
 library(MASS)
 
 set.seed(11122)
@@ -188,3 +190,48 @@ s10a.lengths$new_Length = s10a.lengths$Length - 19.99
 hist(s10a.lengths$new_Length)
 w = fitdistr(s10a.lengths$new_Length, densfun = "weibull")
 weibull.df[nrow(weibull.df) + 1, ] = c("Semizbugu 10A", w[["estimate"]]["shape"], w[["estimate"]]["scale"])
+
+weibull.df$w.shape = as.numeric(weibull.df$w.shape)
+weibull.df$w.scale = as.numeric(weibull.df$w.scale)
+
+#### experimental weibull parameters ####
+exp = read_csv("data/Experimental_chert_platform_flakes.csv")
+
+ggplot(exp) +
+  geom_histogram(aes(x = MAXLENGTH)) +
+  facet_wrap(~Core.ID)
+
+exp.weibull = exp %>% group_by(Core.ID) %>%
+  filter(MAXLENGTH >= 20) %>%
+  mutate(newlength = MAXLENGTH - 19.99) %>%
+  summarize(
+    w.shape = fitdistr(newlength, densfun = "weibull")[["estimate"]]["shape"], 
+    w.scale = fitdistr(newlength, densfun = "weibull")[["estimate"]]["scale"]
+  )
+
+ggplot(exp.weibull) +
+  geom_point(aes(x = w.scale, y = w.shape))
+  
+#### archaeological weibull parameters ####
+pech = data.frame(
+  location = c("Layer 3A", "Layer 3B", "Layer 4", "Layer 5A", "Layer 5B", "Layer 6A", "Layer 6B", "Layer 7", "Layer 8"),
+  w.shape = c(1.16, 1.14, 1.14, 1.20, 1.19, 1.21, 1.21, 1.16, 1.22), 
+  w.scale = c(10.61, 10.59, 15.10, 14.18, 14.63, 16.07, 10.72, 10.86, 13.07)
+)
+
+
+wplot = ggplot(mapping = aes(x = w.scale, y = w.shape)) +
+  geom_point(data = exp.weibull, color = "grey", mapping = aes(shape = "experimental")) +
+  geom_point(data = pech, mapping = aes(shape = "Pech IV"), size = 3) +
+  #geom_point(data = aotearoa, mapping = aes(shape = "Aotearoa"), size = 3) +
+  geom_point(data = weibull.df, mapping = aes(color = location), size = 3) +
+  scale_color_tableau() +
+  labs(x = "Weibull scale (distribution spread)", 
+       y = "Weibull shape (distribution slope)") +
+  scale_shape_manual(name = "",
+                     breaks = c("experimental", "Pech IV", "Semizbugu"), 
+                     values = c("experimental" = 15, "Pech IV" = 3, "Semizbugu" = 16))
+
+ggsave(filename = "figures/weibull-comparison.tiff", wplot, 
+       dpi = 300, width = 7, height = 5)
+  
