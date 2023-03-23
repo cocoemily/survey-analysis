@@ -8,6 +8,7 @@ library(maptools)
 library(rcompanion)
 library(rgdal)
 library(sf)
+library(ggspatial)
 
 theme_set(theme_bw())
 
@@ -80,8 +81,10 @@ plot1 = ggplot() +
   theme(axis.text = element_text(size = 5), 
         legend.text = element_text(size = 6), 
         legend.title = element_text(size = 6), 
-        legend.key.size = unit(0.4, "cm"))
+        legend.key.size = unit(0.4, "cm")) +
+  annotation_scale(pad_x = unit(1, "cm"), pad_y = unit(0.5, "cm"))
 
+plot(plot1)
 ggsave(filename = "figures/between-site-plot_elev.tiff", plot1, 
        dpi = 300, width = 8, height = 6)
 
@@ -97,7 +100,8 @@ plot2 = ggplot() +
   theme(axis.text = element_text(size = 5), 
         legend.text = element_text(size = 6), 
         legend.title = element_text(size = 6), 
-        legend.key.size = unit(0.4, "cm"))
+        legend.key.size = unit(0.4, "cm")) +
+  annotation_scale(pad_x = unit(1, "cm"), pad_y = unit(0.5, "cm"))
 plot(plot2)
 
 ggsave(filename = "figures/between-site-plot_slope.tiff", plot2, 

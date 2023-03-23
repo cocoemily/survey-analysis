@@ -9,6 +9,7 @@ library(spDataLarge)
 library(spdep)
 library(tmap)
 library(spatstat)
+library(ggpubr)
 
 theme_set(theme_bw())
 
@@ -339,10 +340,11 @@ rt.spat.plot = ggplot() +
   scale_fill_gradientn(colors = terrain.colors(10)) +
   scale_color_manual(values = pal1) +
   labs(color = "recycling signature", fill = "elevation", x = "", y = "") +
-  theme(axis.text = element_blank())
-ggsave(plot = rt.spat.plot, filename = "figures/p1-recycling-signature-spatial_elev.tiff")
-
+  theme(axis.text = element_blank()) +
+  annotation_scale(pad_x = unit(0.75, "cm"), pad_y = unit(0.75, "cm"))
 plot(rt.spat.plot)
+ggsave(plot = rt.spat.plot, filename = "figures/p1/p1-recycling-signature-spatial_elev.tiff")
+
 
 rt.spat.plot2 = ggplot() +
   geom_tile(data = slope.df, aes(x = x, y = y, fill = value), alpha = 0.25) +
@@ -351,6 +353,10 @@ rt.spat.plot2 = ggplot() +
   scale_fill_gradientn(colors = cm.colors(10)) +
   scale_color_manual(values = pal1) +
   labs(color = "recycling signature", fill = "slope (degrees)", x = "", y = "") +
-  theme(axis.text = element_blank())
+  theme(axis.text = element_blank()) +
+  annotation_scale(pad_x = unit(0.75, "cm"), pad_y = unit(0.75, "cm"))
 plot(rt.spat.plot2)
-ggsave(plot = rt.spat.plot2, filename = "figures/p1-recycling-signature-spatial_slope.tiff")
+ggsave(plot = rt.spat.plot2, filename = "figures/p1/p1-recycling-signature-spatial_slope.tiff")
+
+ggsave(filename = "figures/p1-map.tiff", ggarrange(rt.spat.plot, rt.spat.plot2), 
+       dpi = 300, height = 15, width = 12)
