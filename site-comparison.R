@@ -167,10 +167,10 @@ ri.cor = data.frame(
 
 cplot1 = ggplot(ri.cor) +
   #geom_abline(intercept = 0, slope = 1) +
-  geom_point(aes(x = count, y = ri, color = location)) +
-  geom_smooth(aes(x = count, y = ri), method = "lm", se = T) +
+  geom_point(aes(x = log(count), y = ri, color = location)) +
+  geom_smooth(aes(x = log(count), y = ri), method = "lm", se = T) +
   scale_color_tableau() +
-  labs(x = "artifact count", y = "recycling intensity") +
+  labs(x = "log(artifact count)", y = "recycling intensity") +
   scale_y_continuous(breaks = c(0, 0.25, 0.50, 0.75))
 plot(cplot1)
 

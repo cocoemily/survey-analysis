@@ -202,7 +202,39 @@ calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 4"))
 
 var(x = c(
   calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P1")),
-  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P2")), 
-  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P5")), 
+  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P2")),
+  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P5")),
+  calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 10A")),
   calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 4"))
 ))
+
+
+cr.dens = data.frame(
+  location = c(
+    "P1", "P2", "P5", "10A", "4"
+  ),
+  cortex.ratio = 
+    c(
+      calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P1")),
+      calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P2")),
+      calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu P5")),
+      calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 10A")),
+      calculate_cortex_ratio(all_artifacts %>% filter(location == "Semizbugu 4"))
+    ), 
+  density = c(
+    log(nrow(all_artifacts %>% filter(location == "Semizbugu P1"))/40), 
+    log(nrow(all_artifacts %>% filter(location == "Semizbugu P2"))/40), 
+    log(nrow(all_artifacts %>% filter(location == "Semizbugu P5"))/40), 
+    log(3823/150000),
+    log(5972/2250)
+  )
+)
+
+crdens = ggplot(cr.dens) +
+  geom_point(aes(x = density, y = cortex.ratio, color = location)) +
+  geom_hline(aes(yintercept = 1)) +
+  theme_bw() +
+  labs(x = "log(artifact density)", y = "cortex ratio")
+ggsave(filename = "figures/cortex-ratios_artifact-density.tiff", 
+       plot = crdens, dpi = 300, height = 3, width = 5)
+

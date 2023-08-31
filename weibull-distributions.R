@@ -211,7 +211,7 @@ exp.weibull = exp %>% group_by(Core.ID) %>%
 
 ggplot(exp.weibull) +
   geom_point(aes(x = w.scale, y = w.shape))
-  
+
 #### archaeological weibull parameters ####
 pech = data.frame(
   location = c("Layer 3A", "Layer 3B", "Layer 4", "Layer 5A", "Layer 5B", "Layer 6A", "Layer 6B", "Layer 7", "Layer 8"),
@@ -219,19 +219,50 @@ pech = data.frame(
   w.scale = c(10.61, 10.59, 15.10, 14.18, 14.63, 16.07, 10.72, 10.86, 13.07)
 )
 
+nz.df = data.frame(
+  location = character(), 
+  w.shape = numeric(), 
+  w.scale = numeric()
+)
+nz.tau = readxl::read_excel("data/NZ lithic data for Emily.xlsx",  sheet = "Tauroa")
+nz.tau.w = nz.tau %>% 
+  mutate(MAXLENGTH = as.numeric(MAXLENGTH)) %>% filter(MAXLENGTH >= 20)
+nz.tau.w$new_Length = nz.tau.w$MAXLENGTH - 19.99
+hist(nz.tau.w$new_Length)
+# nz.tau.obs = nz.tau.w %>% filter(MAT.TYPE == "OBSIDIAN")
+# w = fitdistr(nz.tau.obs$new_Length, densfun = "weibull")
+# nz.df[nrow(nz.df) + 1, ] = c("Tauroa Obsidian", w[["estimate"]]["shape"], w[["estimate"]]["scale"])
+# nz.tau.cher = nz.tau.w %>% filter(MAT.TYPE == "CHERT")
+# w = fitdistr(nz.tau.cher$new_Length, densfun = "weibull")
+# nz.df[nrow(nz.df) + 1, ] = c("Tauroa Chert", w[["estimate"]]["shape"], w[["estimate"]]["scale"])
+w = fitdistr(nz.tau.w$new_Length, densfun = "weibull")
+nz.df[nrow(nz.df) + 1, ] = c("Tauroa", w[["estimate"]]["shape"], w[["estimate"]]["scale"])
+
+nz.tm = readxl::read_excel("data/NZ lithic data for Emily.xlsx",  sheet = "Te Mataku")
+nz.tm.w = nz.tm %>% 
+  mutate(MAXLENGTH = as.numeric(MAXLENGTH)) %>% filter(MAXLENGTH >= 20)
+nz.tm.w$new_Length = nz.tm.w$MAXLENGTH - 19.99
+hist(nz.tm.w$new_Length)
+w = fitdistr(nz.tm.w$new_Length, densfun = "weibull")
+nz.df[nrow(nz.df) + 1, ] = c("Te Mataku", w[["estimate"]]["shape"], w[["estimate"]]["scale"])
+
+nz.df$w.shape = as.numeric(nz.df$w.shape)
+nz.df$w.scale = as.numeric(nz.df$w.scale)
 
 wplot = ggplot(mapping = aes(x = w.scale, y = w.shape)) +
   geom_point(data = exp.weibull, color = "grey", mapping = aes(shape = "experimental")) +
   geom_point(data = pech, mapping = aes(shape = "Pech IV"), size = 3) +
-  #geom_point(data = aotearoa, mapping = aes(shape = "Aotearoa"), size = 3) +
+  geom_point(data = nz.df, mapping = aes(shape = location), size = 3) +
   geom_point(data = weibull.df, mapping = aes(color = location), size = 3) +
   scale_color_tableau() +
   labs(x = "Weibull scale (distribution spread)", 
        y = "Weibull shape (distribution slope)") +
   scale_shape_manual(name = "",
-                     breaks = c("experimental", "Pech IV", "Semizbugu"), 
-                     values = c("experimental" = 15, "Pech IV" = 3, "Semizbugu" = 16))
+                     breaks = c("experimental", "Pech IV", "Tauroa", "Te Mataku", "Semizbugu"),
+                     values = c("experimental" = 15, "Pech IV" = 3, 
+                                "Tauroa" = 9, "Te Mataku" = 12,
+                                "Semizbugu" = 16))
+plot(wplot)
 
 ggsave(filename = "figures/weibull-comparison.tiff", wplot, 
        dpi = 300, width = 7, height = 5)
-  
