@@ -183,11 +183,11 @@ cplot2 = ggplot(ri.cor) +
   scale_y_continuous(breaks = c(0, 0.25, 0.50, 0.75))
 plot(cplot2)
 
-ggsave(
-  filename = "figures/recycling-intensity-correlations.tiff",
-  ggarrange(cplot1, cplot2, ncol = 2, nrow = 1, common.legend = T, labels = "AUTO", legend = "bottom"), 
-  dpi = 300, width = 8, height = 4
-)
+# ggsave(
+#   filename = "figures/recycling-intensity-correlations.tiff",
+#   ggarrange(cplot1, cplot2, ncol = 2, nrow = 1, common.legend = T, labels = "AUTO", legend = "bottom"), 
+#   dpi = 300, width = 8, height = 4
+# )
 
 #### Differences by location ####
 ggplot(all_artifacts) +
@@ -235,18 +235,22 @@ at.r.df = at.r.df %>% group_by(location, Artifact_type) %>%
          Artifact_type = str_replace(Artifact_type, "_", " "))
 at.r.df$Artifact_type = factor(at.r.df$Artifact_type , 
                                levels = c("complete flake", "broken flake", "tool", "tool fragment", "core", "core fragment", "shatter"))
+at.r.df$location = factor(at.r.df$location, levels = c("Semizbugu P1", "Semizbugu P2", "Semizbugu P5", "Semizbugu 10A", "Semizbugu 4"))
 #####recycling by artifact type ######
 at.r.plot = ggplot(at.r.df, aes(x = Artifact_type, y = Freq, fill = recycled)) +
   geom_bar(stat = "identity", width=0.9, position = "dodge") +
-  geom_text(data = at.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 1.5, hjust = -0.1) +
-  geom_text(aes(label = paste("P = ", adj.p), x = "core fragment", y = 450), size = 3, fontface = "italic", hjust = "right", vjust = -0.1) +
-  facet_wrap(~location, ncol = 1, strip.position = "right") +
+  geom_text(data = at.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 2, hjust = -0.01) +
+  geom_text(aes(label = paste("P = ", adj.p), x = "shatter", y = 450), size = 3, fontface = "italic", hjust = "right", vjust = -0.1) +
+  facet_wrap(~location, strip.position = "top") +
   coord_flip() +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "artifact type", y = "count", fill = "recycled?")
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7), 
+        legend.position = "bottom") +
+  labs(x = "", y = "count", fill = "")
+plot(at.r.plot)
+
 ggsave(filename = "figures/artifact-type-recycling.tiff", at.r.plot, 
-       dpi = 300, width = 7, height = 8)
+       dpi = 300, width = 10, height = 6)
 
 all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type, 
                                      levels = c(
@@ -288,18 +292,22 @@ wc.r.df = wc.r.df %>% group_by(location, Weathering_class) %>%
          Weathering_class = str_replace(Weathering_class, "_", " "))
 wc.r.df$Weathering_class = factor(wc.r.df$Weathering_class , 
                                   levels = c("strongly weathered", "mildly weathered", "weakly weathered", "not weathered", "other"))
+wc.r.df$location = factor(wc.r.df$location, levels = c("Semizbugu P1", "Semizbugu P2", "Semizbugu P5", "Semizbugu 10A", "Semizbugu 4"))
 #####recycling by weathering class ######
 wc.r.plot = ggplot(wc.r.df, aes(x = Weathering_class, y = Freq, fill = recycled)) +
   geom_bar(stat = "identity", width=0.9, position = "dodge") +
-  geom_text(data = wc.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 1.5, hjust = -0.1) +
-  geom_text(aes(label = paste("P = ", adj.p), x = "not weathered", y = 500), size = 3, fontface = "italic", hjust = "right", vjust = -1.5) +
-  facet_wrap(~location, ncol = 1, strip.position = "right") +
+  geom_text(data = wc.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 2, hjust = -0.01) +
+  geom_text(aes(label = paste("P = ", adj.p), x = "other", y = 500), size = 3, fontface = "italic", hjust = "right", vjust = -1.5) +
+  facet_wrap(~location, strip.position = "top") +
   coord_flip() +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "weathering class", y = "count", fill = "recycled?")
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7), 
+        legend.position = "bottom") +
+  labs(x = "", y = "count", fill = "")
+plot(wc.r.plot)
+
 ggsave(filename = "figures/weathering-class-recycling.tiff", wc.r.plot, 
-       dpi = 300, width = 7, height = 8)
+       dpi = 300, width = 10, height = 6)
 
 wc.r.plot2 = ggplot(wc.r.df, aes(x = Weathering_class, y = Freq, fill = recycled)) +
   geom_bar(stat = "identity", width=0.9, position = "dodge") +
@@ -411,18 +419,20 @@ tt.r.df = tt.r.df %>% group_by(location, tool.type) %>%
 tt.r.df$tool.type = factor(tt.r.df$tool.type , 
                            levels = rev(c("scraper", "notch", "denticulate", "notch/denticulate", 
                                           "biface", "point", "multiple", "other")))
+tt.r.df$location = factor(tt.r.df$location, levels = c("Semizbugu P1", "Semizbugu P2", "Semizbugu P5", "Semizbugu 10A", "Semizbugu 4"))
 #####recycling by tool type ######
 tt.r.plot = ggplot(tt.r.df, aes(x = tool.type, y = Freq, fill = recycled)) +
   geom_bar(stat = "identity", width=0.9, position = "dodge") +
-  geom_text(data = tt.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 1.5, hjust = -0.1) +
+  geom_text(data = tt.r.df %>% filter(percentage != 0), aes(label = paste0(round(percentage*100, digits = 2),"%")), position = position_dodge2(width = 1), size = 2, hjust = -0.01) +
   geom_text(aes(label = paste("P = ", adj.p), y = 175, x = "notch"), size = 3, fontface = "italic", hjust = "right") +
-  facet_wrap(~location, ncol = 1, strip.position = "right") +
+  facet_wrap(~location, strip.position = "top") +
   coord_flip() +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "tool type", y = "count", fill = "recycled?")
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7), 
+        legend.position = "bottom") +
+  labs(x = "", y = "count", fill = "")
 ggsave(filename = "figures/tool-type-recycling.tiff", tt.r.plot, 
-       dpi = 300, width = 7, height = 8)
+       dpi = 300, width = 10, height = 6)
 
 rtfit = glmer(recycled ~ tool.type + (1 | location), family = binomial(), data = all_artifacts %>% filter(!is.na(tool.type)))
 summary(rtfit)
@@ -470,11 +480,12 @@ pwt = all_artifacts %>% filter(Weight <= 1000) %>% group_by(location) %>%
 we.r.plot = ggplot(all_artifacts %>% filter(Weight <= 1000)) +
   geom_density(aes(Weight, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  geom_text(data = pwt, aes(label = p.adj.signif, x = 900, y = 0.025), fontface = "italic", hjust = "right") +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  geom_text(data = pwt, aes(label = paste("P =",p.adj), x = 900, y = 0.025), fontface = "italic", hjust = "right") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "weight", y = "density", fill = "recycled?", color = "recycled?")
+  labs(x = "weight", y = "density", fill = "", color = "")
+plot(we.r.plot)
 ggsave(filename = "figures/weight-recycling.tiff", we.r.plot, 
        dpi = 300, width = 7, height = 8)
 
@@ -485,11 +496,11 @@ plt = all_artifacts  %>% group_by(location) %>%
 l.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Length, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  geom_text(data = plt, aes(label = p.adj.signif, x = 175, y = 0.020), fontface = "italic", hjust = "right") +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  geom_text(data = plt, aes(label = paste("P =",p.adj), x = 175, y = 0.020), fontface = "italic", hjust = "right") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "length", y = "density", fill = "recycled?", color = "recycled?")
+  labs(x = "length", y = "density", fill = "", color = "")
 ggsave(filename = "figures/length-recycling.tiff", l.r.plot, 
        dpi = 300, width = 7, height = 8)
 
@@ -500,11 +511,11 @@ pwdt = all_artifacts  %>% group_by(location) %>%
 wd.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Width, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  geom_text(data = pwdt, aes(label = p.adj.signif, x = 180, y = 0.025), fontface = "italic", hjust = "right") +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  geom_text(data = pwdt, aes(label = paste("P =",p.adj), x = 180, y = 0.025), fontface = "italic", hjust = "right") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "width", y = "density", fill = "recycled?", color = "recycled?")
+  labs(x = "width", y = "density", fill = "", color = "")
 ggsave(filename = "figures/width-recycling.tiff", wd.r.plot, 
        dpi = 300, width = 7, height = 8)
 
@@ -516,11 +527,11 @@ ptt = all_artifacts  %>% group_by(location) %>%
 t.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Thickness, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  geom_text(data = ptt, aes(label = p.adj.signif, x = 110, y = 0.1), fontface = "italic", hjust = "right") +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  geom_text(data = ptt, aes(label = paste("P =",p.adj), x = 110, y = 0.1), fontface = "italic", hjust = "right") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "thickness", y = "density", fill = "recycled?", color = "recycled?")
+  labs(x = "thickness", y = "density", fill = "", color = "")
 ggsave(filename = "figures/thickness-recycling.tiff", t.r.plot, 
        dpi = 300, width = 7, height = 8)
 
@@ -538,11 +549,11 @@ pcrt = all_artifacts  %>% group_by(location) %>%
 cr.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Cortex_percentage, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  geom_text(data = pcrt, aes(label = p.adj.signif, x = 95, y = 0.065), fontface = "italic", hjust = "right") +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  geom_text(data = pcrt, aes(label = paste("P =",p.adj), x = 95, y = 0.065), fontface = "italic", hjust = "right") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "cortex percentage", y = "density", fill = "recycled?", color = "recycled?")
+  labs(x = "cortex percentage", y = "density", fill = "", color = "")
 ggsave(filename = "figures/cortex-ratio-recycling.tiff", cr.r.plot, 
        dpi = 300, width = 7, height = 8)
 
@@ -556,11 +567,11 @@ pdft = all_artifacts  %>% group_by(location) %>%
 df.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Dorsal_flake_scar_count, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  scale_fill_manual(values = c("#E1BE6A", "#40B0A6")) +
-  geom_text(data = pdft, aes(label = p.adj.signif, x = 55, y = 0.25), fontface = "italic", hjust = "right") +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  scale_fill_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  geom_text(data = pdft, aes(label = paste("P =",p.adj), x = 55, y = 0.25), fontface = "italic", hjust = "right") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7)) +
-  labs(x = "dorsal flake scar count", y = "density", fill = "recycled?", color = "recycled?")
+  labs(x = "dorsal flake scar count", y = "density", fill = "", color = "")
 ggsave(filename = "figures/flake-scar-count-recycling.tiff", df.r.plot, 
        dpi = 300, width = 7, height = 8)
 

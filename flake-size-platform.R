@@ -161,18 +161,47 @@ predicted$attribute = factor(predicted$attribute,
 p.labs = c("weight", "surface area")
 names(p.labs) = c("predicted_weight", "predicted_sa")
 
+weights.r = (predicted %>% filter(recycled == T) %>% filter(attribute == "predicted_weight"))$predicted_val
+weights.u = (predicted %>% filter(recycled == F) %>% filter(attribute == "predicted_weight"))$predicted_val
+
+hist(weights.r)
+hist(weights.u)
+
+pred_w = predicted %>% filter(attribute == "predicted_weight")
+wilcox.test(predicted_val ~ recycled, data = pred_w, alternative = "less")
+
+pred_sa = predicted %>% filter(attribute == "predicted_sa")
+wilcox.test(predicted_val ~ recycled, data = pred_sa, alternative = "less")
+
+
 p1 = ggplot(predicted, aes(y = predicted_val, x = as.factor(recycled), 
                         color = as.factor(recycled))) +
   geom_jitter(alpha = 0.2, size = 0.5) +
   geom_boxplot(alpha = 0.4) +
   facet_wrap(~attribute, scales = "free_y", labeller = labeller(attribute=p.labs)) +
   stat_compare_means(label = "p.signif", label.x.npc = "middle", vjust = 2) +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  labs(x = "recycled?", y = "predicted value", color = "recycled?") +
+  scale_x_discrete(labels = c("unrecycled", "recycled")) +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  labs(x = "", y = "predicted value", color = "") +
+  guides(color = "none") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7))
 plot(p1)
 ggsave(filename = "figures/predicted_flake_sizes.tiff", p1, 
        dpi = 300, width = 6, height = 4)
+
+p2 = ggplot(predicted %>% filter(location %in% c("Semizbugu P1", "Semizbugu P2", "Semizbugu P5")), 
+            aes(y = predicted_val, x = as.factor(recycled), 
+                           color = as.factor(recycled))) +
+  geom_jitter(alpha = 0.2, size = 0.5) +
+  geom_boxplot(alpha = 0.4) +
+  facet_wrap(~attribute, scales = "free_y", labeller = labeller(attribute=p.labs)) +
+  stat_compare_means(label = "p.signif", label.x.npc = "middle", vjust = 2) +
+  scale_x_discrete(labels = c("unrecycled", "recycled")) +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  labs(x = "", y = "predicted value", color = "") +
+  guides(color = "none") +
+  theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7))
+plot(p2)
 
 p.supp = ggplot(predicted, aes(y = predicted_val, x = as.factor(recycled), 
                       color = as.factor(recycled))) +
@@ -180,8 +209,10 @@ p.supp = ggplot(predicted, aes(y = predicted_val, x = as.factor(recycled),
   geom_boxplot(alpha = 0.4) +
   facet_grid(attribute~location, scales = "free", labeller = labeller(attribute=p.labs)) +
   stat_compare_means(label = "p.signif", label.x.npc = "middle", vjust = 2) +
-  scale_color_manual(values = c("#E1BE6A", "#40B0A6")) +
-  labs(x = "recycled?", y = "predicted value", color = "recycled?") +
+  scale_x_discrete(labels = c("unrecycled", "recycled")) +
+  scale_color_manual(values = c("#E1BE6A", "#40B0A6"), labels = c("unrecycled", "recycled")) +
+  labs(x = "", y = "predicted value", color = "") +
+  guides(color = "none") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7))
 plot(p.supp)
 ggsave(filename = "figures/predicted_flake_sizes_by-location.tiff", p.supp, 
@@ -190,6 +221,9 @@ ggsave(filename = "figures/predicted_flake_sizes_by-location.tiff", p.supp,
 p.recycled = all_cflakes %>% filter(recycled == TRUE)
 p.nrecycled = all_cflakes %>% filter(recycled == FALSE)
 
-wilcox.test(p.recycled$predicted_weight, p.nrecycled$predicted_weight)
-wilcox.test(p.recycled$predicted_sa, p.nrecycled$predicted_sa)
+wilcox.test(p.recycled$predicted_weight, p.nrecycled$predicted_weight, alternative = "greater")
+wilcox.test(p.recycled$predicted_sa, p.nrecycled$predicted_sa, alternative = "greater")
 
+
+rcompanion::plotNormalHistogram(sqrt(p.recycled$predicted_weight))
+rcompanion::plotNormalHistogram(sqrt(p.recycled$predicted_sa))
