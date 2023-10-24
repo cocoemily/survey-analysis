@@ -14,6 +14,7 @@ library(lme4)
 library(afex)
 library(QuantPsyc)
 library(broom.mixed)
+library(multcomp)
 
 set.seed(11122)
 
@@ -281,7 +282,8 @@ all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type,
 rafit.data = all_artifacts %>% filter(Artifact_type != "shatter")
 rafit = glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = rafit.data)
 summary(rafit)
-
+post.hoc = glht(rafit, linfct = mcp(Artifact_type = "Tukey"))
+summary(post.hoc, test = adjusted("BH"))
 
 wc.table = table(all_artifacts %>% dplyr::select(location, Weathering_class) %>%
                    filter(!is.na(Weathering_class)))
@@ -349,7 +351,11 @@ ggsave(filename = "figures/SAA_weathering-class-recycling.tiff", wc.r.plot2,
 wreg = all_artifacts
 wreg$Weathering_class = factor(wreg$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 rwfit = glmer(recycled ~ Weathering_class + (1 | location), family = binomial(), data = wreg)
+summary(rwfit)
 rw.df = tidy(rwfit)
+
+post.hoc = glht(rwfit, linfct = mcp(Weathering_class = "Tukey"))
+summary(post.hoc, test = adjusted("BH"))
 
 rw.df$term_clean = c("(intercept)", "strongly weathered", "mildly weathered", "weakly weathered", "other", "")
 rw.df$term_clean = factor(rw.df$term_clean, levels = c("(intercept)", "strongly weathered", "mildly weathered", "weakly weathered", "other", ""))
@@ -462,7 +468,8 @@ ggsave(filename = "figures/tool-type-recycling.tiff", tt.r.plot,
 
 rtfit = glmer(recycled ~ tool.type + (1 | location), family = binomial(), data = all_artifacts %>% filter(!is.na(tool.type)))
 summary(rtfit)
-levels(all_artifacts$tool.type)
+post.hoc = glht(rtfit, linfct = mcp(tool.type = "Tukey"))
+summary(post.hoc, test = adjusted("BH"))
 
 p5fit = glm(recycled ~ tool.type, family = binomial(), data = all_artifacts %>% filter(!is.na(tool.type)) %>% filter(location == "Semizbugu P5"))
 summary(p5fit)
