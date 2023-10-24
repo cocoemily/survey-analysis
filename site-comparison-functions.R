@@ -29,6 +29,8 @@ pairwiseKS = function(data) {
     mutate(Comparison = paste0(location1, " : ", location2)) %>%
     select(Comparison, p.value)
   
+  results2$p.adj = p.adjust(results2$p.value, method = "BH")
+  
   print(results2)
   
 }

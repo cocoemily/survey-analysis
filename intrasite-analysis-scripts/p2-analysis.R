@@ -30,11 +30,16 @@ win = as.owin(st_transform(st_as_sf(window), 32642))
 ####ALL POINTS####
 quadrat.test(ppp, 5, method = "MonteCarlo") 
 #results of quadrat test indicate a inhomogeneous process
-plot(envelope(ppp, fun = Gest, nsim = 99))
-plot(envelope(ppp, fun = Fest, nsim = 99))
+# plot(envelope(ppp, fun = Gest, nsim = 99))
+# plot(envelope(ppp, fun = Fest, nsim = 99))
 #confirms inhomogeneous process
 
 plot(ppp)
+
+Lfun = envelope(ppp, fun = Linhom, nsim = 99, verbose = F)
+plot(Lfun)
+Lfun.global = envelope(ppp, Linhom, nsim = 19, rank = 1, global = T)
+plot(Lfun.global)
 
 D = density(ppp, sigma=bw.diggle)
 plot(D)
@@ -44,7 +49,7 @@ Dnn = nndensity(ppp, k = 25)
 plot(Dnn)
 
 mad.test(ppp, Linhom, nsims = 99, use.theo = T)
-dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
+#dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
 #both tests show spatial dependence of points
 
 Kin = Kinhom(ppp, lambda = Dnn)
@@ -104,8 +109,8 @@ plot(rcycl.ppp)
 
 #test for homogeneity
 quadrat.test(rcycl.ppp, 5, method = "MonteCarlo") 
-plot(envelope(rcycl.ppp, fun = Gest, nsim = 99))
-plot(envelope(rcycl.ppp, fun = Fest, nsim = 99))
+# plot(envelope(rcycl.ppp, fun = Gest, nsim = 99))
+# plot(envelope(rcycl.ppp, fun = Fest, nsim = 99))
 ##recycling ppp is mostly homogeneous, except at larger distances
 
 #test for complete spatial randomness
@@ -115,6 +120,11 @@ dclf.test(rcycl.ppp, Kest, nsims = 99, use.theo = T)
 #dclf test indicate no CSR
 hopskel.test(rcycl.ppp)
 #hopskel test indicates no CSR
+
+rLfun = envelope(rcycl.ppp, fun = Lest, nsim = 99, verbose = F, correction = "Ripley")
+plot(rLfun)
+rLfun.global = envelope(rcycl.ppp, Lest, nsim = 99, rank = 1, global = T, correction = "Ripley")
+plot(rLfun.global)
 
 D = density(rcycl.ppp, sigma=bw.diggle)
 plot(D, useRaster=F)
@@ -138,6 +148,7 @@ plot(Ls)
 ##cdf null hypothesis - CDF of the covariate at all points is equal 
 ## to the CDF of covariate evaluated at the location of the point pattern
 get_dependence_results = function(rcycl.ppp, covar, covar_string, test_string) {
+  #plot(cdf.test(rcycl.ppp, covar))
   if(str_detect(test_string, "less")) {
     return(c(
       covar_string, test_string, 
@@ -244,7 +255,9 @@ dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens)
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: less")
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: greater")
 
-dr$signif = ifelse(dr$p.val < 0.05, TRUE, FALSE)
+dr$p.adj = p.adjust(dr$p.val, method = "BH")
+dr$signif = ifelse(dr$p.adj < 0.05, TRUE, FALSE)
+
 dr$covariate = factor(dr$covariate, 
                       levels = c(
                         "artifact density", "retouched artifact density",

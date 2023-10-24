@@ -28,14 +28,19 @@ win = as.owin(st_transform(st_as_sf(window), 32642))
 ####ALL POINTS####
 quadrat.test(ppp, 5, method = "MonteCarlo") 
 #results of quadrat test indicate a inhomogeneous process
-plot(envelope(ppp, fun = Ginhom, nsim = 99))
-plot(envelope(ppp, fun = Finhom, nsim = 99))
-#confirms inhomogeneous process
+# plot(envelope(ppp, fun = Ginhom, nsim = 99))
+# plot(envelope(ppp, fun = Finhom, nsim = 99))
+# #confirms inhomogeneous process
 
 plot(ppp)
 
 D = density(ppp, sigma=bw.diggle)
-plot(D)
+plot(D, useRaster=F)
+
+Lfun = envelope(ppp, fun = Linhom, nsim = 99, verbose = F)
+plot(Lfun)
+Lfun.global = envelope(ppp, Linhom, nsim = 19, rank = 1, global = T)
+plot(Lfun.global)
 
 sqrt(nrow(st_data))
 Dnn = nndensity(ppp, k = 25)
@@ -46,8 +51,12 @@ dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
 #both tests show spatial dependence of points
 
 Kin = Kinhom(ppp, lambda = Dnn)
+Kin = Kinhom(ppp, lambda = D)
+Kin = Kinhom(ppp)
 plot(Kin)
 Lin = Linhom(ppp, lambda = Dnn)
+Lin = Linhom(ppp, lambda = D)
+Lin = Linhom(ppp)
 plot(Lin)
 #both K and L fall slight below the poisson line --> points are slightly more dispersed than expected
 ## total point process needs to be assessed as a Gibbs model?
@@ -113,19 +122,22 @@ plot(rcycl.ppp)
 
 #test for homogeneity
 quadrat.test(rcycl.ppp, 5, method = "MonteCarlo") 
-plot(envelope(rcycl.ppp, fun = Gest, nsim = 99))
-plot(envelope(rcycl.ppp, fun = Fest, nsim = 99))
+# plot(envelope(rcycl.ppp, fun = Gest, nsim = 99))
+# plot(envelope(rcycl.ppp, fun = Fest, nsim = 99))
 ##recycling ppp is homogeneous
 
 #test for complete spatial randomness
-# mad.test(rcycl.ppp, Kest, nsims = 99, use.theo = T)
-# #mad test indicates  CSR
-# dclf.test(rcycl.ppp, Kest, nsims = 99, use.theo = T)
-#dclf test indicate  CSR
-hopskel.test(rcycl.ppp)
-#hopskel test indicates no CSR
+mad.test(rcycl.ppp, Lest, nsims = 99, use.theo = T)
+# #mad test indicates CSR
 
-D = density(rcycl.ppp, sigma=bw.diggle)
+rLfun = envelope(rcycl.ppp, fun = Lest, nsim = 99, verbose = F, correction = "Ripley")
+plot(rLfun)
+rLfun.global = envelope(rcycl.ppp, Lest, nsim = 99, rank = 1, global = T, correction = "Ripley")
+plot(rLfun.global)
+#global envelope suggests CSR
+
+
+D = density(rcycl.ppp, sigma = bw.diggle)
 plot(D, useRaster=F)
 
 sqrt(nrow(rcycl.data))
@@ -136,7 +148,7 @@ Ks = Kest(rcycl.ppp, lambda = Dnn)
 plot(Ks)
 Ks = Kest(rcycl.ppp, lambda = D)
 plot(Ks)
-Ls = Lest(rcycl.ppp, lambda = Dnn)
+Ls = Lest(rcycl.ppp, correction = "Ripley")
 plot(Ls)
 Ls = Lest(rcycl.ppp, lambda = D)
 plot(Ls)
@@ -149,18 +161,21 @@ plot(Ls)
 ## to the CDF of covariate evaluated at the location of the point pattern
 get_dependence_results = function(rcycl.ppp, covar, covar_string, test_string) {
   if(str_detect(test_string, "less")) {
+    #plot(cdf.test(rcycl.ppp, covar, alternative = "less"))
     return(c(
       covar_string, test_string, 
       cdf.test(rcycl.ppp, covar, alternative = "less")['p.value'], 
       auc(rcycl.ppp, covar)
     ))
   } else if(str_detect(test_string, "greater")) {
+    #plot(cdf.test(rcycl.ppp, covar, alternative = "greater"))
     return(c(
       covar_string, test_string, 
       cdf.test(rcycl.ppp, covar, alternative = "greater")['p.value'], 
       auc(rcycl.ppp, covar)
     ))
   }else {
+    #plot(cdf.test(rcycl.ppp, covar))
     return(c(
       covar_string, test_string, 
       cdf.test(rcycl.ppp, covar)['p.value'], 
@@ -254,7 +269,9 @@ dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens)
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: less")
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: greater")
 
-dr$signif = ifelse(dr$p.val < 0.05, TRUE, FALSE)
+dr$p.adj = p.adjust(dr$p.val, method = "BH")
+dr$signif = ifelse(dr$p.adj < 0.05, TRUE, FALSE)
+
 dr$covariate = factor(dr$covariate, 
                       levels = c(
                         "artifact density", "retouched artifact density",

@@ -11,6 +11,7 @@ library(vcd)
 library(ggstatsplot)
 library(rcompanion)
 library(lme4)
+library(afex)
 library(QuantPsyc)
 library(broom.mixed)
 
@@ -139,27 +140,43 @@ rm(list = c("artifacts", "artifacts1", "artifacts2", "collections", "paleocore_s
 all.p1 = nrow(all_artifacts %>% filter(location == "Semizbugu P1"))
 recycl.p1 = nrow(all_artifacts %>% filter(location == "Semizbugu P1") %>% filter(recycled == T))
 ri.p1 = recycl.p1/all.p1
+db.p1 = nrow(all_artifacts %>% filter(location == "Semizbugu P1") %>% filter(recycled == T) %>%
+  filter(double_patina == T))
+dbp.p1 = db.p1/recycl.p1
 
 all.p2 = nrow(all_artifacts %>% filter(location == "Semizbugu P2"))
 recycl.p2 = nrow(all_artifacts %>% filter(location == "Semizbugu P2") %>% filter(recycled == T))
 ri.p2 = recycl.p2/all.p2
+db.p2 = nrow(all_artifacts %>% filter(location == "Semizbugu P2") %>% filter(recycled == T) %>%
+               filter(double_patina == T))
+dbp.p2 = db.p2/recycl.p2
 
 all.p5 = nrow(all_artifacts %>% filter(location == "Semizbugu P5"))
 recycl.p5 = nrow(all_artifacts %>% filter(location == "Semizbugu P5") %>% filter(recycled == T))
 ri.p5 = recycl.p5/all.p5
+db.p5 = nrow(all_artifacts %>% filter(location == "Semizbugu P5") %>% filter(recycled == T) %>%
+               filter(double_patina == T))
+dbp.p5 = db.p5/recycl.p5
 
 all.s4 = nrow(all_artifacts %>% filter(location == "Semizbugu 4"))
 recycl.s4 = nrow(all_artifacts %>% filter(location == "Semizbugu 4") %>% filter(recycled == T))
 ri.s4 = recycl.s4/all.s4
+db.s4 = nrow(all_artifacts %>% filter(location == "Semizbugu 4") %>% filter(recycled == T) %>%
+               filter(double_patina == T))
+dbp.s4 = db.s4/recycl.s4
 
 all.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A"))
 recycl.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A") %>% filter(recycled == T))
 ri.s10a = recycl.s10a/all.s10a
+db.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A") %>% filter(recycled == T) %>%
+               filter(double_patina == T))
+dbp.s10a = db.s10a/recycl.s10a
 
 ####recycling intensity correlations####
 ri.cor = data.frame(
   location = unique(all_artifacts$location),
   ri = c(ri.p1, ri.p2, ri.p5, ri.s10a, ri.s4),
+  dp.p = c(dbp.p1, dbp.p2, dbp.p5, dbp.s4, dbp.s10a),
   r.count = c(recycl.p1, recycl.p2, recycl.p5, recycl.s10a, recycl.s4),
   count = c(all.p1, all.p2, all.p5, all.s10a, all.s4), 
   cr = c(0.54, 0.65, 0.45, 0.46, 0.50)
@@ -189,6 +206,8 @@ plot(cplot2)
 #   dpi = 300, width = 8, height = 4
 # )
 
+#all_artifacts = all_artifacts %>% mutate(recycled = double_patina)
+
 #### Differences by location ####
 ggplot(all_artifacts) +
   geom_bar(aes(recycled, fill = recycled)) +
@@ -200,12 +219,13 @@ ggplot(all_artifacts) +
 
 rl.table = table(all_artifacts %>% dplyr::select(location,recycled))
 
-pairwiseNominalIndependence(rl.table, simulate.p.value = T, 
+pairwiseNominalIndependence(rl.table, simulate.p.value = T, method = "fdr",
                             fisher = T, chisq = F, gtest = F)
+
 #No difference in distribution of recycled vs non recycled objects between P2 and P5
 
 at.table = table(all_artifacts %>% dplyr::select(location, Artifact_type))
-pairwiseNominalIndependence(at.table, simulate.p.value = T, 
+pairwiseNominalIndependence(at.table, simulate.p.value = T, method = "fdr",
                             fisher = T, chisq = F, gtest = F)
 #no difference between S10A and S4 or between P2 and P5 for artifact type distributions
 
@@ -252,16 +272,20 @@ plot(at.r.plot)
 ggsave(filename = "figures/artifact-type-recycling.tiff", at.r.plot, 
        dpi = 300, width = 10, height = 6)
 
+table(all_artifacts$Artifact_type, all_artifacts$recycled)
+
 all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type, 
                                      levels = c(
-                                       "shatter", "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment"
+                                       "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment", "shatter"
                                      ))
-rafit = glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = all_artifacts)
+rafit.data = all_artifacts %>% filter(Artifact_type != "shatter")
+rafit = glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = rafit.data)
 summary(rafit)
+
 
 wc.table = table(all_artifacts %>% dplyr::select(location, Weathering_class) %>%
                    filter(!is.na(Weathering_class)))
-pairwiseNominalIndependence(wc.table, simulate.p.value = T, 
+pairwiseNominalIndependence(wc.table, simulate.p.value = T, method = "fdr",
                             fisher = T, chisq = F, gtest = F)
 #no difference between P2 and P5 in distribution of artifacts among weathering classes
 
@@ -338,6 +362,7 @@ lmerrw = ggplot(rw.df %>% filter(effect == "fixed")) +
   geom_linerange(aes(x = term_clean,  y = estimate, ymin = lower, ymax = upper), color = "blue") +
   coord_flip() +
   labs(x = "term")
+plot(lmerrw)
 ggsave(filename = "figures/SAA_weathering-class-recycling_lmer.tiff", lmerrw , 
        dpi = 300, width = 6, height = 5)
 
@@ -388,7 +413,7 @@ ggsave(filename = "figures/SAA_weathering-class-recycling_lmer.tiff", lmerrw ,
 
 pairwiseNominalIndependence(
   table(all_artifacts %>% dplyr::select(location, tool.type)),
-  simulate.p.value = T, 
+  simulate.p.value = T, method = "fdr",
   fisher = T, chisq = F, gtest = F
 )
 #no difference in tool type distributions between 10A and 4, between P1 and P2, or between P2 and P5
@@ -431,6 +456,7 @@ tt.r.plot = ggplot(tt.r.df, aes(x = tool.type, y = Freq, fill = recycled)) +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7), 
         legend.position = "bottom") +
   labs(x = "", y = "count", fill = "")
+plot(tt.r.plot)
 ggsave(filename = "figures/tool-type-recycling.tiff", tt.r.plot, 
        dpi = 300, width = 10, height = 6)
 
@@ -476,7 +502,7 @@ ggsave(filename = "figures/cat-data-comparison-by-site.tiff", mfig1,
 pairwiseKS(all_artifacts %>% dplyr::select(location, Weight))
 #statistically significant interaction between location and recycling on weight
 pwt = all_artifacts %>% filter(Weight <= 1000) %>% group_by(location) %>%
-  pairwise_wilcox_test(Weight ~ recycled, p.adjust.method = "bonferroni")
+  pairwise_wilcox_test(Weight ~ recycled, p.adjust.method = "fdr")
 we.r.plot = ggplot(all_artifacts %>% filter(Weight <= 1000)) +
   geom_density(aes(Weight, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
@@ -492,7 +518,7 @@ ggsave(filename = "figures/weight-recycling.tiff", we.r.plot,
 #####recycling by length #####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Length))
 plt = all_artifacts  %>% group_by(location) %>%
-  pairwise_wilcox_test(Length ~ recycled, p.adjust.method = "bonferroni")
+  pairwise_wilcox_test(Length ~ recycled, p.adjust.method = "fdr")
 l.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Length, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
@@ -507,7 +533,7 @@ ggsave(filename = "figures/length-recycling.tiff", l.r.plot,
 #####recycling by width #####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Width))
 pwdt = all_artifacts  %>% group_by(location) %>%
-  pairwise_wilcox_test(Width ~ recycled, p.adjust.method = "bonferroni")
+  pairwise_wilcox_test(Width ~ recycled, p.adjust.method = "fdr")
 wd.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Width, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
@@ -523,7 +549,7 @@ ggsave(filename = "figures/width-recycling.tiff", wd.r.plot,
 #####recycling by thickness #####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Thickness))
 ptt = all_artifacts  %>% group_by(location) %>%
-  pairwise_wilcox_test(Thickness ~ recycled, p.adjust.method = "bonferroni")
+  pairwise_wilcox_test(Thickness ~ recycled, p.adjust.method = "fdr")
 t.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Thickness, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
@@ -545,7 +571,7 @@ ggsave(filename = "figures/cont-data-comparison-by-site1.tiff", mfig2,
 #####recycling by cortex percentages#####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Cortex_percentage))
 pcrt = all_artifacts  %>% group_by(location) %>%
-  pairwise_wilcox_test(Cortex_percentage ~ recycled, p.adjust.method = "bonferroni")
+  pairwise_wilcox_test(Cortex_percentage ~ recycled, p.adjust.method = "fdr")
 cr.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Cortex_percentage, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
@@ -563,7 +589,7 @@ ggsave(filename = "figures/cortex-ratio-recycling.tiff", cr.r.plot,
 #####recycling by flake scar counts #####
 pairwiseKS(all_artifacts %>% dplyr::select(location, Dorsal_flake_scar_count))
 pdft = all_artifacts  %>% group_by(location) %>%
-  pairwise_wilcox_test(Dorsal_flake_scar_count ~ recycled, p.adjust.method = "bonferroni")
+  pairwise_wilcox_test(Dorsal_flake_scar_count ~ recycled, p.adjust.method = "fdr")
 df.r.plot = ggplot(all_artifacts) +
   geom_density(aes(Dorsal_flake_scar_count, group = recycled, fill = recycled, color = recycled), alpha = 0.5) +
   facet_wrap(~location, ncol = 1, strip.position = "right") +
@@ -584,8 +610,8 @@ ggsave(filename = "figures/cont-data-comparison-by-site2.tiff", mfig3,
 
 #### Regressions between locations ####
 ##does location explain more variation than other variables?
-reg.data = all_artifacts %>% dplyr::select("recycled","Weathering_class", 
-                                           "Dorsal_flake_scar_count", "Cortex_percentage",
+reg.data = all_artifacts %>% dplyr::select("recycled", "Artifact_type", "Weathering_class", 
+                                           "Cortex_percentage",
                                            "Thickness", "Length", "Width", 
                                            "Weight")
 reg.data$recycled = as.factor(reg.data$recycled)
@@ -595,44 +621,66 @@ fit1 = glm(recycled ~ ., family = binomial(), data = reg.data)
 summary(fit1)
 
 reg.data2 = all_artifacts %>% dplyr::select("location", "recycled", "Weathering_class", 
-                                            "Dorsal_flake_scar_count", "Cortex_percentage",
+                                            "Cortex_percentage",
                                             "Thickness", "Length", "Width", 
                                             "Weight")
+reg.data2$Weathering_class = factor(reg.data2$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 fit2 = glm(recycled ~ ., family = binomial(), data = reg.data2)
 summary(fit2)
 
-anova(fit1, fit2, test = "LR")
+reg.data3 = all_artifacts %>% dplyr::select("location", "recycled", "Artifact_type", "Weathering_class", 
+                                            "Cortex_percentage",
+                                            "Thickness", "Length", "Width", 
+                                            "Weight")
+reg.data3$Weathering_class = factor(reg.data3$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
+fit3 = glm(recycled ~ ., family = binomial(), data = reg.data3)
+summary(fit3)
+car::vif(fit3)
+
+anova(fit2, fit3, test = "LR")
+anova(fit1, fit3, test = "LR")
 ##need to include location, but weakly and not weathered artifacts are still less recycled, 
 ##and overall long and wide artifacts are more likely to be recycled, but also thinner artifacts
 
 ###### standardized coefficients#####
-coef = as.data.frame(summary(fit2)$coefficients)
+coef = as.data.frame(summary(fit3)$coefficients)
 coef$var = rownames(coef)
-scoef = as.data.frame(lm.beta::lm.beta(fit2)[["standardized.coefficients"]])
+scoef = as.data.frame(lm.beta::lm.beta(fit3)[["standardized.coefficients"]])
 scoef$var = rownames(scoef)
 colnames(scoef) = c("coef", "var")
 rownames(scoef) = NULL
 scoef$abs_coef = abs(scoef$coef)
 scoef = scoef %>% left_join(coef)
-scoef$signf = ifelse(scoef$`Pr(>|z|)` < 0.05, "TRUE", "FALSE")
+
+test.signif = as.data.frame(confint(fit3))
+test.signif$var = rownames(test.signif)
+colnames(test.signif) = c("lower", "upper", "var")
+test.signif$signif = ifelse(
+  test.signif$lower < 0 & test.signif$upper > 0, 
+  FALSE, TRUE
+)
+
+scoef = scoef %>% left_join(test.signif)
 
 scoef$var = factor(scoef$var, 
                    levels = c(
                      "locationSemizbugu 4", "locationSemizbugu P1", "locationSemizbugu P2", "locationSemizbugu P5", 
-                     "Weathering_classmildly_weathered", "Weathering_classweakly_weathered", "Weathering_classnot_weathered", "Weathering_classother",
+                     "Artifact_typebroken_flake", "Artifact_typetool", "Artifact_typetool_fragment", "Artifact_typecore", "Artifact_typecore_fragment", "Artifact_typeshatter",
+                     "Weathering_classstrongly_weathered", "Weathering_classmildly_weathered", "Weathering_classweakly_weathered", "Weathering_classother",
                      "Dorsal_flake_scar_count", "Cortex_percentage", 
                      "Length", "Width", "Thickness", "Weight"
                    ))
-scoef$var = fct_rev(scoef$var)
-sc.labs = rev(c("location: Semizbugu 4", "location: Semizbugu P1", "location: Semizbugu P2", "location: Semizbugu P5", 
-                "weathering class: mild", "weathering class: weak", "weathering class: not", "weathering class: other",
-                "dorsal flake scar count", "cortex percentage", 
-                "length", "width", "thickness", "weight"))
+#scoef$var = fct_rev(scoef$var)
+sc.labs = c("location: Semizbugu 4", "location: Semizbugu P1", "location: Semizbugu P2", "location: Semizbugu P5",
+            "type: broken flake", "type: tool", "type: tool frag", "type: core", "type: core frag", "type: shatter",
+            "weathering class: strongly", "weathering class: mild", "weathering class: weak", "weathering class: other",
+            "dorsal flake scar count", "cortex percentage", 
+            "length", "width", "thickness", "weight")
 
 sc.plot = ggplot(scoef %>% filter(!is.na(var))) +
   geom_hline(yintercept = 0, color = I("red")) +
   geom_hline(yintercept = min((scoef %>% filter(str_detect(var, "location")))$abs_coef), color = I("grey"), linetype = "dashed") +
-  geom_point(aes(x = var, y = abs_coef, color = var, shape = signf), size = 5)+
+  geom_point(aes(x = var, y = abs_coef, color = var, shape = signif), size = 5)+
   coord_flip() +
   guides(color = "none") +
   labs(x = "variable", y = "absolute value of standardized coefficient", 

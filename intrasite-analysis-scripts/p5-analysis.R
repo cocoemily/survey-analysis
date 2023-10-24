@@ -104,17 +104,22 @@ plot(rcycl.ppp)
 
 #test for homogeneity
 quadrat.test(rcycl.ppp, 5, method = "MonteCarlo") 
-plot(envelope(rcycl.ppp, fun = Gest, nsim = 99))
-plot(envelope(rcycl.ppp, fun = Fest, nsim = 99))
+# plot(envelope(rcycl.ppp, fun = Gest, nsim = 99))
+# plot(envelope(rcycl.ppp, fun = Fest, nsim = 99))
 ##recycling ppp is inhomogeneous
 
 #test for complete spatial randomness
-mad.test(rcycl.ppp, Kinhom, nsims = 99, use.theo = T)
+mad.test(rcycl.ppp, Linhom, nsims = 99, use.theo = T)
 #mad test indicates no CSR
-dclf.test(rcycl.ppp, Kinhom, nsims = 99, use.theo = T)
-#dclf test indicate no CSR
-hopskel.test(rcycl.ppp)
+# dclf.test(rcycl.ppp, Kinhom, nsims = 99, use.theo = T)
+# #dclf test indicate no CSR
+# hopskel.test(rcycl.ppp)
 #hopskel test indicates no CSR
+
+rLfun = envelope(rcycl.ppp, fun = Linhom, nsim = 99, verbose = F, correction = "Ripley")
+plot(rLfun)
+rLfun.global = envelope(rcycl.ppp, Linhom, nsim = 99, rank = 1, global = T, correction = "Ripley")
+plot(rLfun.global)
 
 D = density(rcycl.ppp, sigma=bw.diggle)
 plot(D, useRaster=F)
@@ -127,7 +132,7 @@ Ks = Kinhom(rcycl.ppp, lambda = Dnn)
 plot(Ks)
 Ks = Kinhom(rcycl.ppp, lambda = D)
 plot(Ks)
-Ls = Linhom(rcycl.ppp, lambda = Dnn)
+Ls = Linhom(rcycl.ppp)
 plot(Ls)
 Ls = Linhom(rcycl.ppp, lambda = D)
 plot(Ls)
@@ -139,6 +144,7 @@ plot(Ls)
 ##cdf null hypothesis - CDF of the covariate at all points is equal 
 ## to the CDF of covariate evaluated at the location of the point pattern
 get_dependence_results = function(rcycl.ppp, covar, covar_string, test_string) {
+  #plot(cdf.test(rcycl.ppp, covar))
   if(str_detect(test_string, "less")) {
     return(c(
       covar_string, test_string, 
@@ -245,7 +251,9 @@ dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens)
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: less")
 dr[nrow(dr) + 1, ] <- get_dependence_results(rcycl.ppp, as.im(weak_weather.dens), "weakly weathered artifact density", "one-sided: greater")
 
-dr$signif = ifelse(dr$p.val < 0.05, TRUE, FALSE)
+dr$p.adj = p.adjust(dr$p.val, method = "BH")
+dr$signif = ifelse(dr$p.adj < 0.05, TRUE, FALSE)
+
 dr$covariate = factor(dr$covariate, 
                       levels = c(
                         "artifact density", "retouched artifact density",

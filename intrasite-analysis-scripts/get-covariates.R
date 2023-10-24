@@ -274,7 +274,7 @@ thick.dens = density(ppp, sigma = bw.diggle, adjust = 2,
 
 
 #### elevation covariate ####
-dem = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/terrain/WorldDEMNeo_DSM_015_N47_09_E077_75/DEM/WorldDEMNeo_DSM_015_N47_09_E077_75_DEM.tif")
+dem = raster("/Users/emilycoco/Library/Mobile Documents/com~apple~CloudDocs/sat-imagery/Kazakhstan/terrain/WorldDEMNeo_DSM_015_N47_09_E077_75/DEM/WorldDEMNeo_DSM_015_N47_09_E077_75_DEM.tif")
 dem_rpj = projectRaster(dem, crs = 32642)
 plot(dem_rpj)
 
@@ -287,14 +287,14 @@ dem_im = as.im(dem_crop)
 plot(dem_im, useRaster=F)
 
 
-slope.perc = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
+slope.perc = raster("/Users/emilycoco/Library/Mobile Documents/com~apple~CloudDocs/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
 sp_rpj = projectRaster(slope.perc, crs = 32642)
 sp_crop = crop(sp_rpj, st_transform(st_as_sf(b_window), 32642))
 plot(sp_crop)
 sp_im = as.im(sp_crop)
 plot(sp_im, useRaster=F)
 
-slope.deg = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
+slope.deg = raster("/Users/emilycoco/Library/Mobile Documents/com~apple~CloudDocs/sat-imagery/Kazakhstan/derived/slope-percentage.tif")
 sd_rpj = projectRaster(slope.deg, crs = 32642)
 sd_crop = crop(sd_rpj, st_transform(st_as_sf(b_window), 32642))
 plot(sd_crop)
@@ -307,3 +307,4 @@ er_crop = crop(er_rpj, st_transform(st_as_sf(b_window), 32642))
 plot(er_crop)
 er_im = as.im(er_crop)
 plot(er_im, useRaster=F)
+
