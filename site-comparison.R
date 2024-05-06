@@ -55,6 +55,10 @@ p5 = artifacts %>% filter(location == "Semizbugu P5")
 s10a = collections %>% filter(location == 'Semizbugu 10A')
 s4 = collections %>% filter(location == "Semizbugu 4")
 
+nrow(p1)
+nrow(p2)
+nrow(p5)
+
 cols = c("Id_number", "location", "recycled", "double_patina", "Raw_material_description", 
          "Weathering_class", "Artifact_type", "Bordian_type", "Tool_type", "Flake_type", "Blank_form",
          "Dorsal_flake_scar_count", "Cortex_percentage", "Flake_fragment", "Flake_termination",
@@ -173,6 +177,11 @@ db.s10a = nrow(all_artifacts %>% filter(location == "Semizbugu 10A") %>% filter(
                filter(double_patina == T))
 dbp.s10a = db.s10a/recycl.s10a
 
+nrow(all_artifacts %>% filter(Weathering_class == "strongly_weathered"))/nrow(all_artifacts)
+nrow(all_artifacts %>% filter(Weathering_class == "mildly_weathered"))/nrow(all_artifacts)
+(nrow(all_artifacts %>% filter(Weathering_class == "weakly_weathered")) + 
+       nrow(all_artifacts %>% filter(Weathering_class == "not_weathered")))/nrow(all_artifacts)
+
 ####recycling intensity correlations####
 ri.cor = data.frame(
   location = unique(all_artifacts$location),
@@ -229,6 +238,13 @@ at.table = table(all_artifacts %>% dplyr::select(location, Artifact_type))
 pairwiseNominalIndependence(at.table, simulate.p.value = T, method = "fdr",
                             fisher = T, chisq = F, gtest = F)
 #no difference between S10A and S4 or between P2 and P5 for artifact type distributions
+ft1 = chisq.test(table(all_artifacts %>% filter(location %in% c("Semizbugu P1", "Semizbugu P2"))%>% dplyr::select(location, Artifact_type)), 
+            simulate.p.value = T)
+ft1$residuals
+ft2 = chisq.test(table(all_artifacts %>% filter(location %in% c("Semizbugu P1", "Semizbugu P5"))%>% dplyr::select(location, Artifact_type)), 
+                 simulate.p.value = T)
+ft2$residuals
+
 
 at.r.table = table(all_artifacts %>% dplyr::select(location, recycled, Artifact_type))
 at.r.table2 = apply(at.r.table, c(1,2,3), sum)
@@ -280,7 +296,7 @@ all_artifacts$Artifact_type = factor(all_artifacts$Artifact_type,
                                        "complete_flake", "broken_flake", "tool", "tool_fragment", "core", "core_fragment", "shatter"
                                      ))
 rafit.data = all_artifacts %>% filter(Artifact_type != "shatter")
-rafit = glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = rafit.data)
+rafit = lme4::glmer(recycled ~ Artifact_type + (1 | location), family = binomial(), data = rafit.data)
 summary(rafit)
 post.hoc = glht(rafit, linfct = mcp(Artifact_type = "Tukey"))
 summary(post.hoc, test = adjusted("BH"))
@@ -290,6 +306,13 @@ wc.table = table(all_artifacts %>% dplyr::select(location, Weathering_class) %>%
 pairwiseNominalIndependence(wc.table, simulate.p.value = T, method = "fdr",
                             fisher = T, chisq = F, gtest = F)
 #no difference between P2 and P5 in distribution of artifacts among weathering classes
+ft1 = chisq.test(table(all_artifacts %>% filter(location %in% c("Semizbugu P1", "Semizbugu P2"))%>% dplyr::select(location, Weathering_class)), 
+                 simulate.p.value = T)
+ft1$residuals
+ft2 = chisq.test(table(all_artifacts %>% filter(location %in% c("Semizbugu P1", "Semizbugu P5"))%>% dplyr::select(location, Weathering_class)), 
+                 simulate.p.value = T)
+ft2$residuals
+
 
 wc.r.table = table(all_artifacts %>% dplyr::select(location, recycled, Weathering_class) %>%
                      filter(!is.na(Weathering_class)))
@@ -348,6 +371,15 @@ plot(wc.r.plot2)
 ggsave(filename = "figures/SAA_weathering-class-recycling.tiff", wc.r.plot2, 
        dpi = 300, width = 13, height = 6)
 
+wr.r.plot3 = ggplot(
+  wc.r.df %>% filter(recycled == T), 
+  aes(x = Weathering_class, y = Freq)
+) + 
+  geom_bar(stat = "identity", width=0.9, position = "dodge")
+plot(wr.r.plot3)
+
+table(all_artifacts$recycled, all_artifacts$Weathering_class, all_artifacts$location)
+
 wreg = all_artifacts
 wreg$Weathering_class = factor(wreg$Weathering_class, levels = c("not_weathered", "strongly_weathered", "mildly_weathered", "weakly_weathered", "other"))
 rwfit = glmer(recycled ~ Weathering_class + (1 | location), family = binomial(), data = wreg)
@@ -356,6 +388,8 @@ rw.df = tidy(rwfit)
 
 post.hoc = glht(rwfit, linfct = mcp(Weathering_class = "Tukey"))
 summary(post.hoc, test = adjusted("BH"))
+
+as.data.frame(lm.beta::lm.beta(rwfit)[["standardized.coefficients"]])
 
 rw.df$term_clean = c("(intercept)", "strongly weathered", "mildly weathered", "weakly weathered", "other", "")
 rw.df$term_clean = factor(rw.df$term_clean, levels = c("(intercept)", "strongly weathered", "mildly weathered", "weakly weathered", "other", ""))
@@ -371,6 +405,16 @@ lmerrw = ggplot(rw.df %>% filter(effect == "fixed")) +
 plot(lmerrw)
 ggsave(filename = "figures/SAA_weathering-class-recycling_lmer.tiff", lmerrw , 
        dpi = 300, width = 6, height = 5)
+
+
+####comparison of weathering classes by location####
+nrecycled = all_artifacts %>% filter(recycled == F)
+
+w.comp = nrecycled %>%
+  dplyr::select(Weathering_class, location) %>% 
+  filter(Weathering_class %in% c("strongly_weathered", "mildly_weathered"))
+w.comp$Weathering_class = factor(w.comp$Weathering_class, 
+                                 levels = c("strongly_weathered", "mildly_weathered"))
 
 
 # pairwiseNominalIndependence(
@@ -423,6 +467,12 @@ pairwiseNominalIndependence(
   fisher = T, chisq = F, gtest = F
 )
 #no difference in tool type distributions between 10A and 4, between P1 and P2, or between P2 and P5
+ft1 = chisq.test(table(all_artifacts %>% filter(location %in% c("Semizbugu P1", "Semizbugu P2"))%>% dplyr::select(location, tool.type)), 
+                 simulate.p.value = T)
+ft1$residuals
+ft2 = chisq.test(table(all_artifacts %>% filter(location %in% c("Semizbugu P1", "Semizbugu P5"))%>% dplyr::select(location, tool.type)), 
+                 simulate.p.value = T)
+ft2$residuals
 
 tt.r.table = table(all_artifacts %>% dplyr::select(location, recycled, tool.type))
 tt.r.table2 = apply(tt.r.table, c(1,2,3), sum)
@@ -648,6 +698,9 @@ anova(fit2, fit3, test = "LR")
 anova(fit1, fit3, test = "LR")
 ##need to include location, but weakly and not weathered artifacts are still less recycled, 
 ##and overall long and wide artifacts are more likely to be recycled, but also thinner artifacts
+
+fit3.mm = glmer(recycled ~ Artifact_type + Weathering_class + (1 | location), family = binomial(), data = reg.data3)
+summary(fit3.mm)
 
 ###### standardized coefficients#####
 coef = as.data.frame(summary(fit3)$coefficients)

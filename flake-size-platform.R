@@ -189,6 +189,11 @@ plot(p1)
 ggsave(filename = "figures/predicted_flake_sizes.tiff", p1, 
        dpi = 300, width = 6, height = 4)
 
+mu.test1 = compare_means(
+  predicted_val ~ recycled, data = predicted %>% filter(location %in% c("Semizbugu P1", "Semizbugu P2", "Semizbugu P5")),
+  group.by = "location", p.adjust.method = "fdr"
+)
+
 p2 = ggplot(predicted %>% filter(location %in% c("Semizbugu P1", "Semizbugu P2", "Semizbugu P5")), 
             aes(y = predicted_val, x = as.factor(recycled), 
                            color = as.factor(recycled))) +
@@ -202,6 +207,11 @@ p2 = ggplot(predicted %>% filter(location %in% c("Semizbugu P1", "Semizbugu P2",
   guides(color = "none") +
   theme(strip.text = element_text(size = 8, face = "bold"), axis.text = element_text(size = 7))
 plot(p2)
+
+mu.test2 = compare_means(
+  predicted_val ~ recycled, data = predicted,
+    group.by = "location", p.adjust.method = "fdr"
+)
 
 p.supp = ggplot(predicted, aes(y = predicted_val, x = as.factor(recycled), 
                       color = as.factor(recycled))) +

@@ -15,6 +15,9 @@ set.seed(120109)
 st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
 win = as.owin(st_transform(st_as_sf(window), 32642))
 
+#for comparison to assemblage unaffected by recycling
+st_data = st_data %>% filter(rcycl == 0)
+
 ppp = as.ppp(st_data)
 marks(ppp) = NULL
 Window(ppp) = win
@@ -241,12 +244,12 @@ if(nrow(pppdata) > 0) {
   ttype_oth.dens = density(ttype_oth.ppp, sigma = bw.diggle, adjust = 2)
 }
 
-retouch.ppp = as.ppp(st_data %>% filter(data$Retch == T))
+retouch.ppp = as.ppp(st_data %>% filter(st_data$Retch == T))
 marks(retouch.ppp) = NULL
 Window(retouch.ppp) = win
 retouch.dens = density(retouch.ppp, sigma = bw.diggle, adjust = 2)
 
-edge_dam.ppp = as.ppp(st_data %>% filter(data$Edg_d == T))
+edge_dam.ppp = as.ppp(st_data %>% filter(st_data$Edg_d == T))
 marks(edge_dam.ppp) = NULL
 Window(edge_dam.ppp) = win
 edge_dam.dens = density(edge_dam.ppp, sigma = bw.diggle, adjust = 2)

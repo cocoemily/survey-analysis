@@ -28,78 +28,80 @@ st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
 win = as.owin(st_transform(st_as_sf(window), 32642))
 
 ####ALL POINTS####
-quadrat.test(ppp, 5, method = "MonteCarlo") 
-#results of quadrat test indicate a inhomogeneous process
-# plot(envelope(ppp, fun = Gest, nsim = 99))
-# plot(envelope(ppp, fun = Fest, nsim = 99))
-#confirms inhomogeneous process
+# 
+# 
+# quadrat.test(ppp, 5, method = "MonteCarlo") 
+# #results of quadrat test indicate a inhomogeneous process
+# # plot(envelope(ppp, fun = Gest, nsim = 99))
+# # plot(envelope(ppp, fun = Fest, nsim = 99))
+# #confirms inhomogeneous process
+# 
+# plot(ppp)
+# 
+# Lfun = envelope(ppp, fun = Linhom, nsim = 99, verbose = F)
+# plot(Lfun)
+# Lfun.global = envelope(ppp, Linhom, nsim = 19, rank = 1, global = T)
+# plot(Lfun.global)
+# 
+# D = density(ppp, sigma=bw.diggle)
+# plot(D)
+# 
+# sqrt(nrow(st_data))
+# Dnn = nndensity(ppp, k = 25)
+# plot(Dnn)
+# 
+# mad.test(ppp, Linhom, nsims = 99, use.theo = T)
+# #dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
+# #both tests show spatial dependence of points
+# 
+# Kin = Kinhom(ppp, lambda = Dnn)
+# plot(Kin)
+# Lin = Linhom(ppp, lambda = Dnn)
+# plot(Lin)
+# #both K and L fall slight below the poisson line --> points are slightly more dispersed than expected
+# 
+# 
+# ###### segregation tests #####
+# #null = spatially constant
+# #artifact types
+# ppp = as.ppp(st_data)
+# marks(ppp) = factor(st_data$Artfct_t)
+# Window(ppp) = win
+# plot(ppp)
+# segregation.test(ppp, nsim=99)
+# #there is spatial segregation of artifact types
+# plot(density(split(ppp)), useRaster=F)
+# 
+# #weathering class with other weathering
+# ppp = as.ppp(st_data)
+# marks(ppp) = factor(st_data$Wthrng_c)
+# Window(ppp) = win
+# plot(ppp)
+# segregation.test(ppp, nsim=99) 
+# #there is spatial segregation of weathering types
+# plot(density(split(ppp)), useRaster=F)
+# 
+# #weathering class without other weathering
+# wdata = st_data %>% filter(Wthrng_c != "other")
+# wppp = as.ppp(wdata)
+# marks(wppp) = wdata$Wthrng_c
+# Window(wppp) = win
+# plot(wppp)
+# segregation.test(wppp, nsim=99)
+# plot(density(split(wppp)), useRaster=F)
+# #spatial segregation of weathering types
+# 
+# ttdata = st_data %>% filter(!is.na(tool.type)) %>% filter(tool.type != "notch/denticulate")
+# ttdata$tool.type = droplevels(ttdata$tool.type)
+# ttppp = as.ppp(ttdata)
+# marks(ttppp) = as.factor(ttdata$tool.type)
+# Window(ttppp) = win
+# plot(ttppp)
+# segregation.test(ttppp, nsim=99) #not working??
+# plot(density(split(ttppp)), useRaster=F)
 
-plot(ppp)
 
-Lfun = envelope(ppp, fun = Linhom, nsim = 99, verbose = F)
-plot(Lfun)
-Lfun.global = envelope(ppp, Linhom, nsim = 19, rank = 1, global = T)
-plot(Lfun.global)
-
-D = density(ppp, sigma=bw.diggle)
-plot(D)
-
-sqrt(nrow(st_data))
-Dnn = nndensity(ppp, k = 25)
-plot(Dnn)
-
-mad.test(ppp, Linhom, nsims = 99, use.theo = T)
-#dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
-#both tests show spatial dependence of points
-
-Kin = Kinhom(ppp, lambda = Dnn)
-plot(Kin)
-Lin = Linhom(ppp, lambda = Dnn)
-plot(Lin)
-#both K and L fall slight below the poisson line --> points are slightly more dispersed than expected
-
-
-###### segregation tests #####
-#null = spatially constant
-#artifact types
-ppp = as.ppp(st_data)
-marks(ppp) = factor(st_data$Artfct_t)
-Window(ppp) = win
-plot(ppp)
-segregation.test(ppp, nsim=99)
-#there is spatial segregation of artifact types
-plot(density(split(ppp)), useRaster=F)
-
-#weathering class with other weathering
-ppp = as.ppp(st_data)
-marks(ppp) = factor(st_data$Wthrng_c)
-Window(ppp) = win
-plot(ppp)
-segregation.test(ppp, nsim=99) 
-#there is spatial segregation of weathering types
-plot(density(split(ppp)), useRaster=F)
-
-#weathering class without other weathering
-wdata = st_data %>% filter(Wthrng_c != "other")
-wppp = as.ppp(wdata)
-marks(wppp) = wdata$Wthrng_c
-Window(wppp) = win
-plot(wppp)
-segregation.test(wppp, nsim=99)
-plot(density(split(wppp)), useRaster=F)
-#spatial segregation of weathering types
-
-ttdata = st_data %>% filter(!is.na(tool.type)) %>% filter(tool.type != "notch/denticulate")
-ttdata$tool.type = droplevels(ttdata$tool.type)
-ttppp = as.ppp(ttdata)
-marks(ttppp) = as.factor(ttdata$tool.type)
-Window(ttppp) = win
-plot(ttppp)
-segregation.test(ttppp, nsim=99) #not working??
-plot(density(split(ttppp)), useRaster=F)
-
-
-#### ppp with recycled artifacts ####
+#### RECYCLED ARTIFACTS ####
 rcycl.data = st_data %>% filter(rcycl == 1)
 rcycl.data = rcycl.data %>% filter(poss_roll == F | is.na(poss_roll))
 rcycl.ppp = as.ppp(rcycl.data)
@@ -114,7 +116,7 @@ quadrat.test(rcycl.ppp, 5, method = "MonteCarlo")
 ##recycling ppp is mostly homogeneous, except at larger distances
 
 #test for complete spatial randomness
-mad.test(rcycl.ppp, Kest, nsims = 99, use.theo = T)
+mad.test(rcycl.ppp, Lest, nsims = 99, use.theo = T)
 #mad test indicates no CSR
 dclf.test(rcycl.ppp, Kest, nsims = 99, use.theo = T)
 #dclf test indicate no CSR

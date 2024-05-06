@@ -27,74 +27,74 @@ st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
 win = as.owin(st_transform(st_as_sf(window), 32642))
 
 ####ALL POINTS####
-quadrat.test(ppp, 5, method = "MonteCarlo") 
-#results of quadrat test indicate a inhomogeneous process
-plot(envelope(ppp, fun = Ginhom, nsim = 99))
-plot(envelope(ppp, fun = Finhom, nsim = 99))
-#confirms inhomogeneous process
+# quadrat.test(ppp, 5, method = "MonteCarlo") 
+# #results of quadrat test indicate a inhomogeneous process
+# plot(envelope(ppp, fun = Ginhom, nsim = 99))
+# plot(envelope(ppp, fun = Finhom, nsim = 99))
+# #confirms inhomogeneous process
+# 
+# plot(ppp)
+# 
+# D = density(ppp, sigma=bw.diggle)
+# plot(D)
+# 
+# sqrt(nrow(st_data))
+# Dnn = nndensity(ppp, k = 25)
+# plot(Dnn)
+# 
+# mad.test(ppp, Linhom, nsims = 99, use.theo = T)
+# dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
+# #both tests show spatial dependence of points
+# 
+# Kin = Kinhom(ppp, lambda = Dnn, correction = "Ripley")
+# plot(Kin)
+# # Lin = Linhom(ppp, lambda = Dnn)
+# # plot(Lin)
+# #both K function falls slightly below the poisson line --> points are slightly more dispersed than expected
+# 
+# 
+# ###### segregation tests #####
+# #null = spatially constant
+# #artifact types
+# ppp = as.ppp(st_data)
+# marks(ppp) = st_data$Artfct_t
+# Window(ppp) = win
+# plot(ppp)
+# segregation.test(ppp, nsim=99)
+# #there is spatial segregation of artifact types
+# plot(density(split(ppp)), useRaster=F)
+# 
+# #weathering class with other weathering
+# wdata = st_data %>% filter(!is.na(Wthrng_c))
+# ppp = as.ppp(wdata)
+# marks(ppp) = wdata$Wthrng_c
+# Window(ppp) = win
+# plot(ppp)
+# segregation.test(ppp, nsim=99) 
+# #there is spatial segregation of weathering types
+# plot(density(split(ppp)), useRaster=F)
+# 
+# # #weathering class without other weathering
+# # wdata = st_data %>% filter(Wthrng_c != "other" & !is.na(Wthrng_c))
+# # wppp = as.ppp(wdata)
+# # marks(wppp) = wdata$Wthrng_c
+# # Window(wppp) = win
+# # plot(wppp)
+# # segregation.test(wppp, nsim=99)
+# # plot(density(split(wppp)), useRaster=F)
+# # #spatial segregation of weathering types
+# 
+# ttdata = st_data %>% filter(!is.na(tool.type))
+# ttppp = as.ppp(ttdata)
+# marks(ttppp) = ttdata$tool.type
+# Window(ttppp) = win
+# plot(ttppp)
+# segregation.test(ttppp, nsim=99)
+# #spatial segregation of tool types
+# plot(density(split(ttppp)), useRaster=F)
 
-plot(ppp)
 
-D = density(ppp, sigma=bw.diggle)
-plot(D)
-
-sqrt(nrow(st_data))
-Dnn = nndensity(ppp, k = 25)
-plot(Dnn)
-
-mad.test(ppp, Linhom, nsims = 99, use.theo = T)
-dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
-#both tests show spatial dependence of points
-
-Kin = Kinhom(ppp, lambda = Dnn, correction = "Ripley")
-plot(Kin)
-# Lin = Linhom(ppp, lambda = Dnn)
-# plot(Lin)
-#both K function falls slightly below the poisson line --> points are slightly more dispersed than expected
-
-
-###### segregation tests #####
-#null = spatially constant
-#artifact types
-ppp = as.ppp(st_data)
-marks(ppp) = st_data$Artfct_t
-Window(ppp) = win
-plot(ppp)
-segregation.test(ppp, nsim=99)
-#there is spatial segregation of artifact types
-plot(density(split(ppp)), useRaster=F)
-
-#weathering class with other weathering
-wdata = st_data %>% filter(!is.na(Wthrng_c))
-ppp = as.ppp(wdata)
-marks(ppp) = wdata$Wthrng_c
-Window(ppp) = win
-plot(ppp)
-segregation.test(ppp, nsim=99) 
-#there is spatial segregation of weathering types
-plot(density(split(ppp)), useRaster=F)
-
-# #weathering class without other weathering
-# wdata = st_data %>% filter(Wthrng_c != "other" & !is.na(Wthrng_c))
-# wppp = as.ppp(wdata)
-# marks(wppp) = wdata$Wthrng_c
-# Window(wppp) = win
-# plot(wppp)
-# segregation.test(wppp, nsim=99)
-# plot(density(split(wppp)), useRaster=F)
-# #spatial segregation of weathering types
-
-ttdata = st_data %>% filter(!is.na(tool.type))
-ttppp = as.ppp(ttdata)
-marks(ttppp) = ttdata$tool.type
-Window(ttppp) = win
-plot(ttppp)
-segregation.test(ttppp, nsim=99)
-#spatial segregation of tool types
-plot(density(split(ttppp)), useRaster=F)
-
-
-#### ppp with recycled artifacts ####
+#### RECYCLED ARTIFACTS ####
 rcycl.data = st_data %>% filter(rcycl == 1)
 rcycl.data = rcycl.data %>% filter(poss_roll == F | is.na(poss_roll))
 rcycl.ppp = as.ppp(rcycl.data)

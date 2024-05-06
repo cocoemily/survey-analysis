@@ -22,97 +22,98 @@ window = p1.window
 source("intrasite-analysis-scripts/clean-data.R")
 #source("intrasite-analysis-scripts/get-covariates.R")
 
-st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
-win = as.owin(st_transform(st_as_sf(window), 32642))
-
 ####ALL POINTS####
-quadrat.test(ppp, 5, method = "MonteCarlo") 
-#results of quadrat test indicate a inhomogeneous process
-# plot(envelope(ppp, fun = Ginhom, nsim = 99))
-# plot(envelope(ppp, fun = Finhom, nsim = 99))
-# #confirms inhomogeneous process
+# st_data = st_transform(st_as_sf(data), 32642) #WGS 84 / UTM zone 42N
+# win = as.owin(st_transform(st_as_sf(window), 32642))
+# 
 
-plot(ppp)
+# quadrat.test(ppp, 5, method = "MonteCarlo") 
+# #results of quadrat test indicate a inhomogeneous process
+# # plot(envelope(ppp, fun = Ginhom, nsim = 99))
+# # plot(envelope(ppp, fun = Finhom, nsim = 99))
+# # #confirms inhomogeneous process
+# 
+# plot(ppp)
+# 
+# D = density(ppp, sigma=bw.diggle)
+# plot(D, useRaster=F)
+# 
+# Lfun = envelope(ppp, fun = Linhom, nsim = 99, verbose = F)
+# plot(Lfun)
+# Lfun.global = envelope(ppp, Linhom, nsim = 19, rank = 1, global = T)
+# plot(Lfun.global)
+# 
+# sqrt(nrow(st_data))
+# Dnn = nndensity(ppp, k = 25)
+# plot(Dnn)
+# 
+# mad.test(ppp, Linhom, nsims = 99, use.theo = T)
+# dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
+# #both tests show spatial dependence of points
+# 
+# Kin = Kinhom(ppp, lambda = Dnn)
+# Kin = Kinhom(ppp, lambda = D)
+# Kin = Kinhom(ppp)
+# plot(Kin)
+# Lin = Linhom(ppp, lambda = Dnn)
+# Lin = Linhom(ppp, lambda = D)
+# Lin = Linhom(ppp)
+# plot(Lin)
+# #both K and L fall slight below the poisson line --> points are slightly more dispersed than expected
+# ## total point process needs to be assessed as a Gibbs model?
+# plot(dem_im)
+# 
+# cdf.test(ppp, dem_im)
+# cdf.test(ppp, sp_im)
+# cdf.test(ppp, sd_im)
+# cdf.test(ppp, er_im)
+# #location of points dependent on elevation and slope
+# 
 
-D = density(ppp, sigma=bw.diggle)
-plot(D, useRaster=F)
-
-Lfun = envelope(ppp, fun = Linhom, nsim = 99, verbose = F)
-plot(Lfun)
-Lfun.global = envelope(ppp, Linhom, nsim = 19, rank = 1, global = T)
-plot(Lfun.global)
-
-sqrt(nrow(st_data))
-Dnn = nndensity(ppp, k = 25)
-plot(Dnn)
-
-mad.test(ppp, Linhom, nsims = 99, use.theo = T)
-dclf.test(ppp, Linhom, nsims = 99, use.theo = T)
-#both tests show spatial dependence of points
-
-Kin = Kinhom(ppp, lambda = Dnn)
-Kin = Kinhom(ppp, lambda = D)
-Kin = Kinhom(ppp)
-plot(Kin)
-Lin = Linhom(ppp, lambda = Dnn)
-Lin = Linhom(ppp, lambda = D)
-Lin = Linhom(ppp)
-plot(Lin)
-#both K and L fall slight below the poisson line --> points are slightly more dispersed than expected
-## total point process needs to be assessed as a Gibbs model?
-plot(dem_im)
-
-cdf.test(ppp, dem_im)
-cdf.test(ppp, sp_im)
-cdf.test(ppp, sd_im)
-cdf.test(ppp, er_im)
-#location of points dependent on elevation and slope
-
-# ###### TODO####
-# fit1 = ppm(ppp ~ dem_im)
-# summary(fit1)
-# plot(fit1, useRaster=F)
-# fitted.artifact.dens = intensity(fit1)
-
-###### segregation tests #####
-#artifact types
-ppp = as.ppp(st_data)
-marks(ppp) = st_data$Artfct_t
-Window(ppp) = win
-plot(ppp)
-segregation.test(ppp, nsim=99)
-#there is spatial segregation of artifact types
-plot(density(split(ppp)), useRaster=F)
-
-#weathering class with other weathering
-ppp = as.ppp(st_data)
-marks(ppp) = st_data$Wthrng_c
-Window(ppp) = win
-plot(ppp)
-segregation.test(ppp, nsim=99) 
-#there is spatial segregation of weathering types
-plot(density(split(ppp)), useRaster=F)
-
-#weathering class without other weathering
-wdata = st_data %>% filter(Wthrng_c != "other")
-wppp = as.ppp(wdata)
-marks(wppp) = wdata$Wthrng_c
-Window(wppp) = win
-plot(wppp)
-segregation.test(wppp, nsim=99)
-plot(density(split(wppp)), useRaster=F)
-#spatial segregation of weathering types
-
-ttdata = st_data %>% filter(!is.na(tool.type))
-ttppp = as.ppp(ttdata)
-marks(ttppp) = ttdata$tool.type
-Window(ttppp) = win
-plot(ttppp)
-segregation.test(ttppp, nsim=99) #not working??
-plot(density(split(ttppp)), useRaster=F)
+# # fit1 = ppm(ppp ~ dem_im)
+# # summary(fit1)
+# # plot(fit1, useRaster=F)
+# # fitted.artifact.dens = intensity(fit1)
+# 
+# ###### segregation tests #####
+# #artifact types
+# # ppp = as.ppp(st_data)
+# # marks(ppp) = st_data$Artfct_t
+# # Window(ppp) = win
+# # plot(ppp)
+# # segregation.test(ppp, nsim=99)
+# # #there is spatial segregation of artifact types
+# # plot(density(split(ppp)), useRaster=F)
+# # 
+# # #weathering class with other weathering
+# # ppp = as.ppp(st_data)
+# # marks(ppp) = st_data$Wthrng_c
+# # Window(ppp) = win
+# # plot(ppp)
+# # segregation.test(ppp, nsim=99) 
+# # #there is spatial segregation of weathering types
+# # plot(density(split(ppp)), useRaster=F)
+# 
+# #weathering class without other weathering
+# wdata = st_data %>% filter(Wthrng_c != "other")
+# wppp = as.ppp(wdata)
+# marks(wppp) = wdata$Wthrng_c
+# Window(wppp) = win
+# plot(wppp)
+# segregation.test(wppp, nsim=99)
+# plot(density(split(wppp)), useRaster=F)
+# #spatial segregation of weathering types
+# 
+# ttdata = st_data %>% filter(!is.na(tool.type))
+# ttppp = as.ppp(ttdata)
+# marks(ttppp) = ttdata$tool.type
+# Window(ttppp) = win
+# plot(ttppp)
+# segregation.test(ttppp, nsim=99) #not working??
+# plot(density(split(ttppp)), useRaster=F)
 
 
-#### ppp with recycled artifacts ####
+#### RECYCLED ARTIFACTS ####
 rcycl.data = st_data %>% filter(rcycl == 1)
 rcycl.data = rcycl.data %>% filter(poss_roll == F | is.na(poss_roll))
 rcycl.ppp = as.ppp(rcycl.data)
@@ -160,8 +161,8 @@ plot(Ls)
 ##cdf null hypothesis - CDF of the covariate at all points is equal 
 ## to the CDF of covariate evaluated at the location of the point pattern
 get_dependence_results = function(rcycl.ppp, covar, covar_string, test_string) {
+  plot(cdf.test(rcycl.ppp, covar))
   if(str_detect(test_string, "less")) {
-    #plot(cdf.test(rcycl.ppp, covar, alternative = "less"))
     return(c(
       covar_string, test_string, 
       cdf.test(rcycl.ppp, covar, alternative = "less")['p.value'], 
@@ -290,6 +291,9 @@ dplot = ggplot(dr %>% filter(signif == TRUE) %>% filter(test != "two-sided")) +
 plot(dplot)
 ggsave(filename = "figures/p1-dependence-auc.tiff", dpi = 300)
 
+
+plot(thick.dens, useRaster = F)
+
 #### Marked point process for segregation analysis ####
 marks(rcycl.ppp) = rcycl.data$Artfct_t
 plot(rcycl.ppp)
@@ -315,65 +319,65 @@ segregation.test(rcycl.ppp, nsim = 99)
 
 
 #### Figure -- recycling types spatial ####
-theme_set(theme_bw())
-sp.p1 = readOGR("data/artifact-shapefiles", "p1-artifacts")
-#sp.p1 = sp.p1 %>% filter(sp.p1$Id_nm %in% p1.artifacts$Id_number)
-
-sp.p1@data = sp.p1@data %>%
-  mutate(Recycling_type =
-           ifelse(str_detect(Rcyclng_n, "none"), "none", 
-                  ifelse(str_detect(Rcyclng_n, " "), "multiple", 
-                         Rcyclng_n))) %>%
-  mutate(Recycling_type = str_replace_all(Recycling_type, "_", " ")) %>%
-  mutate(Recycling_type = ifelse(Recycling_type == "core on flake blade", "core on flake/blade", Recycling_type))
-sp.p1@data$Recycling_type = factor(sp.p1@data$Recycling_type, 
-                                   levels = c("double patina", "core on flake/blade", "core on hammerstone", "multiple", "other", "none"))
-
-sf.p1 = st_transform(st_as_sf(sp.p1), 32642)
-
-pal1 = c("double patina" = "#0072B2", 
-         "core on flake/blade" = "#D55E00", 
-         "core on hammerstone" = "#CC79A7", 
-         "multiple" = "#009E73", 
-         "other" = "#F0E442")
-
-plot.sf.p1 = sf.p1[!is.na(sf.p1$Recycling_type),]
-
-plot.dem = as(dem_crop, "SpatialPixelsDataFrame")
-dem.df = as.data.frame(plot.dem)
-colnames(dem.df) = c("value", "x", "y")
-
-plot.slope = as(sd_crop, "SpatialPixelsDataFrame")
-slope.df = as.data.frame(plot.slope)
-colnames(slope.df) = c("value", "x", "y")
-
-# photo = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/imagery/03November2021_WV02_8-Band_Pansharpened_8-Bit/21NOV03055416-PS3DS-050094510010_01_P001_8Bnd_8bit.tif")
-# plot(photo)
-
-rt.spat.plot = ggplot() +
-  geom_tile(data = dem.df, aes(x = x, y = y, fill = value), alpha = 0.25) +
-  geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type == "none",], size = 0.25, alpha = 0.25) +
-  geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type != "none",], aes(color = Recycling_type), size = 1) +
-  scale_fill_gradientn(colors = terrain.colors(10)) +
-  scale_color_manual(values = pal1) +
-  labs(color = "recycling signature", fill = "elevation", x = "", y = "") +
-  theme(axis.text = element_blank()) +
-  annotation_scale(pad_x = unit(0.75, "cm"), pad_y = unit(0.75, "cm"))
-plot(rt.spat.plot)
-ggsave(plot = rt.spat.plot, filename = "figures/p1/p1-recycling-signature-spatial_elev.tiff")
-
-
-rt.spat.plot2 = ggplot() +
-  geom_tile(data = slope.df, aes(x = x, y = y, fill = value), alpha = 0.25) +
-  geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type == "none",], size = 0.25, alpha = 0.25) +
-  geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type != "none",], aes(color = Recycling_type), size = 1) +
-  scale_fill_gradientn(colors = cm.colors(10)) +
-  scale_color_manual(values = pal1) +
-  labs(color = "recycling signature", fill = "slope (degrees)", x = "", y = "") +
-  theme(axis.text = element_blank()) +
-  annotation_scale(pad_x = unit(0.75, "cm"), pad_y = unit(0.75, "cm"))
-plot(rt.spat.plot2)
-ggsave(plot = rt.spat.plot2, filename = "figures/p1/p1-recycling-signature-spatial_slope.tiff")
-
-ggsave(filename = "figures/p1-map.tiff", ggarrange(rt.spat.plot, rt.spat.plot2), 
-       dpi = 300, height = 15, width = 12)
+# theme_set(theme_bw())
+# sp.p1 = readOGR("data/artifact-shapefiles", "p1-artifacts")
+# #sp.p1 = sp.p1 %>% filter(sp.p1$Id_nm %in% p1.artifacts$Id_number)
+# 
+# sp.p1@data = sp.p1@data %>%
+#   mutate(Recycling_type =
+#            ifelse(str_detect(Rcyclng_n, "none"), "none", 
+#                   ifelse(str_detect(Rcyclng_n, " "), "multiple", 
+#                          Rcyclng_n))) %>%
+#   mutate(Recycling_type = str_replace_all(Recycling_type, "_", " ")) %>%
+#   mutate(Recycling_type = ifelse(Recycling_type == "core on flake blade", "core on flake/blade", Recycling_type))
+# sp.p1@data$Recycling_type = factor(sp.p1@data$Recycling_type, 
+#                                    levels = c("double patina", "core on flake/blade", "core on hammerstone", "multiple", "other", "none"))
+# 
+# sf.p1 = st_transform(st_as_sf(sp.p1), 32642)
+# 
+# pal1 = c("double patina" = "#0072B2", 
+#          "core on flake/blade" = "#D55E00", 
+#          "core on hammerstone" = "#CC79A7", 
+#          "multiple" = "#009E73", 
+#          "other" = "#F0E442")
+# 
+# plot.sf.p1 = sf.p1[!is.na(sf.p1$Recycling_type),]
+# 
+# plot.dem = as(dem_crop, "SpatialPixelsDataFrame")
+# dem.df = as.data.frame(plot.dem)
+# colnames(dem.df) = c("value", "x", "y")
+# 
+# plot.slope = as(sd_crop, "SpatialPixelsDataFrame")
+# slope.df = as.data.frame(plot.slope)
+# colnames(slope.df) = c("value", "x", "y")
+# 
+# # photo = raster("/Users/emilycoco/Desktop/NYU/Dissertation-Research/sat-imagery/Kazakhstan/imagery/03November2021_WV02_8-Band_Pansharpened_8-Bit/21NOV03055416-PS3DS-050094510010_01_P001_8Bnd_8bit.tif")
+# # plot(photo)
+# 
+# rt.spat.plot = ggplot() +
+#   geom_tile(data = dem.df, aes(x = x, y = y, fill = value), alpha = 0.25) +
+#   geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type == "none",], size = 0.25, alpha = 0.25) +
+#   geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type != "none",], aes(color = Recycling_type), size = 1) +
+#   scale_fill_gradientn(colors = terrain.colors(10)) +
+#   scale_color_manual(values = pal1) +
+#   labs(color = "recycling signature", fill = "elevation", x = "", y = "") +
+#   theme(axis.text = element_blank()) +
+#   annotation_scale(pad_x = unit(0.75, "cm"), pad_y = unit(0.75, "cm"))
+# plot(rt.spat.plot)
+# ggsave(plot = rt.spat.plot, filename = "figures/p1/p1-recycling-signature-spatial_elev.tiff")
+# 
+# 
+# rt.spat.plot2 = ggplot() +
+#   geom_tile(data = slope.df, aes(x = x, y = y, fill = value), alpha = 0.25) +
+#   geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type == "none",], size = 0.25, alpha = 0.25) +
+#   geom_sf(data = plot.sf.p1[plot.sf.p1$Recycling_type != "none",], aes(color = Recycling_type), size = 1) +
+#   scale_fill_gradientn(colors = cm.colors(10)) +
+#   scale_color_manual(values = pal1) +
+#   labs(color = "recycling signature", fill = "slope (degrees)", x = "", y = "") +
+#   theme(axis.text = element_blank()) +
+#   annotation_scale(pad_x = unit(0.75, "cm"), pad_y = unit(0.75, "cm"))
+# plot(rt.spat.plot2)
+# ggsave(plot = rt.spat.plot2, filename = "figures/p1/p1-recycling-signature-spatial_slope.tiff")
+# 
+# ggsave(filename = "figures/p1-map.tiff", ggarrange(rt.spat.plot, rt.spat.plot2), 
+#        dpi = 300, height = 15, width = 12)
